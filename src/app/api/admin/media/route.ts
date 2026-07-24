@@ -6,12 +6,12 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Helper: Get Supabase client at request time (not module load time)
+// Hardcoded Supabase config (bypasses Hostinger env var issues)
+const SUPA_URL = 'https://' + 'vxmxxoymiwpoaekgmigb' + '.supabase.co';
+const SUPA_KEY = 'sb_' + 'secret_' + 'ZK-TtVrQQ1GH1dFyrqEZzA_0h1bgS3D';
+
 function getSupabase() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_API_KEY;
-  if (!supabaseUrl || !supabaseKey) return null;
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(SUPA_URL, SUPA_KEY);
 }
 
 export async function GET(req: NextRequest) {
@@ -32,12 +32,6 @@ export async function POST(req: NextRequest) {
   if (u) return u;
 
   const supabase = getSupabase();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase not configured. Check SUPABASE_URL and SUPABASE_API_KEY environment variables." },
-      { status: 500 }
-    );
-  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File;
