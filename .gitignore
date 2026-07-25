@@ -10,3 +10,4 @@ scripts/*.log
 prisma/schema.mysql.prisma
 .mysql-migrated
 app-hostinger.js
+db/custom.db
