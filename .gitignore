@@ -9,3 +9,4 @@ download/
 scripts/*.log
 prisma/schema.mysql.prisma
 .mysql-migrated
+.env
