@@ -3,17 +3,15 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "bash scripts/ensure-prisma.sh && next dev -p 3000 2>&1 | tee dev.log",
-    "build": "bash scripts/ensure-prisma.sh && next build",
-    "start": "bash scripts/ensure-prisma.sh && node app-hostinger.js",
+    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "build": "next build",
+    "start": "node app-hostinger.js",
     "lint": "eslint .",
     "db:push": "bash scripts/ensure-prisma.sh && prisma db push",
     "db:generate": "bash scripts/ensure-prisma.sh && prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "prebuild": "bash scripts/ensure-prisma.sh",
-    "prestart": "bash scripts/ensure-prisma.sh",
-    "postinstall": "bash scripts/ensure-prisma.sh"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
