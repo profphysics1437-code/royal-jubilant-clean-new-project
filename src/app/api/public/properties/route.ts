@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
     where: {
       published: true,
       ...(status ? { status } : {}),
-      ...(featured === "true" ? { featured: true } : {}),
-      ...(latest === "true" ? { isLatest: true } : {}),
+      ...(featured === "true" || featured === "1" ? { featured: true } : {}),
+      ...(latest === "true" || latest === "1" ? { isLatest: true } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: limit,
