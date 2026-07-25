@@ -7,5 +7,8 @@ export async function GET() {
   const settings = await db.siteSetting.findMany();
   const result: Record<string, string> = {};
   settings.forEach((s) => { result[s.key] = s.value; });
-  return NextResponse.json({ settings: result }, { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } });
+  return NextResponse.json(
+    { settings: result },
+    { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+  );
 }

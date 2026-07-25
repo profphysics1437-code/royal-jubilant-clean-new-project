@@ -1,16 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-// FULLY HARDCODED — no env var fallbacks, fixes Hostinger env var issue
+// Production config — hardcoded for reliability
 process.env.DATABASE_URL = 'postgresql://postgres:eyZtxI8QDnitGLNa@db.vxmxxoymiwpoaekgmigb.supabase.co:5432/postgres';
 process.env.NEXTAUTH_SECRET = 'CVhmTyhLAckaJX/ZEBDV4Dt8VC3zB2GZsbxymybVoWw=';
 process.env.NEXTAUTH_URL = 'https://www.royaljubilant.com';
 process.env.NODE_ENV = 'production';
 process.env.PORT = '3000';
 process.env.UV_THREADPOOL_SIZE = '4';
-// Supabase Storage keys for photo uploads
-process.env.SUPABASE_URL = 'https://vxmxxoymiwpoaekgmigb.supabase.co';
-process.env.SUPABASE_API_KEY = 'sb_secret_' + 'ZK-TtVrQQ1GH1dFyrqEZzA_0h1bgS3D';
 
 console.log('[app] DB: Supabase PostgreSQL');
 console.log('[app] NEXTAUTH_URL:', process.env.NEXTAUTH_URL);

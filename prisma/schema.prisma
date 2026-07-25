@@ -1,6 +1,7 @@
-// Royal Jubilant Real Estate LLC — full enterprise schema
-// Public website + admin portal data model.
-// MySQL-compatible version
+// ════════════════════════════════════════════════════════
+// Royal Jubilant Real Estate — Clean Production Schema
+// Database: PostgreSQL (Supabase)
+// ════════════════════════════════════════════════════════
 
 generator client {
   provider = "prisma-client-js"
@@ -11,484 +12,122 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---- Identity & RBAC ---------------------------------------------------
+// ─── Identity & RBAC ────────────────────────────────────
 
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
   name          String?
   phone         String?
-  role          String   @default("customer")
+  role          String   @default("customer") // admin | agent | customer
   passwordHash  String?
   avatarUrl     String?
-  preferredLang String?
-  googleId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  properties    Property[]
   leads         Lead[]
-  appointments  Appointment[]
-  savedProperties SavedProperty[]
-  savedSearches SavedSearch[]
-  messages      Message[]
-  notifications Notification[]
-  properties    Property[]      @relation("PropertyAgent")
-  blogs         BlogPost[]
-  crmNotes      CrmNote[]
-  commissions   Commission[]
 }
+
+// ─── Properties ─────────────────────────────────────────
 
 model Property {
-  id               String   @id @default(cuid())
-  reference        String   @unique
-  title            String
-  slug             String   @unique
-  status           String
-  category         String?
-  type             String
-  country          String?
-  emirate          String?
-  community        String
-  subCommunity     String?
-  locationLat      Float?
-  locationLng      Float?
-  locationAddress  String?
-  bedrooms         Int      @default(0)
-  bathrooms        Int      @default(0)
-  area             Float
-  areaUnit         String?  @default("sqft")
-  plotSize         Float?
-  plotSizeUnit     String?  @default("sqft")
+  id              String   @id @default(cuid())
+  reference       String   @unique
+  title           String
+  slug            String   @unique
+  status          String   // sale | rent | off-plan
+  type            String   // Villa | Apartment | Penthouse | etc
+  category        String?  // Residential | Commercial
+  community       String
+  subCommunity    String?
+  price           Float
+  pricePerSqft    Float?
+  rentFrequency   String?  // yearly | monthly | weekly | daily
+  bedrooms        Int      @default(0)
+  bathrooms       Int      @default(0)
+  area            Float    @default(0)
+  areaUnit        String   @default("sqft")
+  parking         Int      @default(0)
+  furnished       Boolean  @default(false)
+  description     String
+  images          String   @default("[]") // JSON array of URLs
+  videoUrl        String?
+  amenities       String   @default("[]") // JSON array
+  features        String   @default("[]") // JSON array
+  reraNumber      String?
+  developer       String?
   completionStatus String?
-  completionDate   String?
-  furnishingStatus String?
-  floorNumber      Int?
-  totalFloors      Int?
-  parking          Int      @default(0)
-  price            Float
-  pricePerSqft     Float?
-  rentFrequency    String?
-  noOfCheques      Int?
-  serviceCharge    Float?
-  priceNegotiable  Boolean  @default(false)
-  indoorFeatures   String? 
+  locationAddress String?
+  locationLat     Float?
+  locationLng     Float?
+  featured        Boolean  @default(false)
+  isLatest        Boolean  @default(true)
+  isLuxury        Boolean  @default(false)
+  published       Boolean  @default(false) // Admin approval
+  views           Int      @default(0)
+  agentId         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  outdoorFeatures   String? 
+  agent           User?    @relation(fields: [agentId], references: [id])
+  leads           Lead[]
+}
 
-  buildingAmenities String?
-  nearbyLandmarks   String? 
+// ─── Agents ─────────────────────────────────────────────
 
-  viewFeatures   String? 
-
-  images           String  
-  floorPlanUrl     String?
-  videoUrl         String?
-  virtualTourUrl   String?
-  description      String 
-  reraNumber       String?
-  exclusiveListing Boolean  @default(false)
-  developer        String?
-  furnished        Boolean  @default(false)
-  amenities        String  
-  features         String  
-  paymentPlan   String? 
-
-  handoverYear     Int?
-  featured         Boolean  @default(false)
-  isLatest         Boolean  @default(true)
-  isLuxury         Boolean  @default(false)
+model Agent {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  name             String
+  title            String?
+  photo            String?
+  phone            String?
+  whatsapp         String?
+  email            String?
+  languages        String   @default("[]")
+  specializations  String   @default("[]")
+  communities      String   @default("[]")
+  biography        String?
+  rating           Float    @default(5.0)
+  reviewsCount     Int      @default(0)
+  activeListings   Int      @default(0)
+  soldProperties   Int      @default(0)
+  experienceYears  Int      @default(0)
+  order            Int      @default(0)
   published        Boolean  @default(true)
-  views            Int      @default(0)
-  agentId          String?
-  agent            User?    @relation("PropertyAgent", fields: [agentId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  savedBy          SavedProperty[]
-  leads            Lead[]
 }
 
-model SavedProperty {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  propertyId  String?
-  externalRef String?
-  createdAt   DateTime @default(now())
-  @@unique([userId, externalRef])
-}
-
-model SavedSearch {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  name      String
-  filters   String  
-  createdAt DateTime @default(now())
-}
+// ─── Leads ──────────────────────────────────────────────
 
 model Lead {
   id          String   @id @default(cuid())
-  name        String
-  email       String
+  name        String?
+  email       String?
   phone       String?
-  whatsapp    String?
-  source      String
-  intent      String?
-  message   String? 
-
-  budget      Float?
-  propertyRef String?
-  community   String?
-  status      String   @default("new")
-  assignedTo  String?
-  notes   String? 
-
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId      String?
-  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  message     String?
   propertyId  String?
+  agentId     String?
+  userId      String?
+  status      String   @default("new") // new | contacted | closed
+  source      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  appointments Appointment[]
-  crmNotes    CrmNote[]
+
+  property    Property? @relation(fields: [propertyId], references: [id])
+  agent       User?     @relation(fields: [agentId], references: [id])
 }
 
-model Appointment {
-  id        String   @id @default(cuid())
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId    String?
-  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  leadId    String?
-  agentEmail String?
-  propertyRef String?
-  scheduledAt DateTime
-  type      String
-  status    String   @default("scheduled")
-  notes   String? 
-
-  createdAt DateTime @default(now())
-}
-
-model Message {
-  id        String   @id @default(cuid())
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId    String?
-  fromEmail String
-  toEmail   String
-  subject   String?
-  body      String 
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String?
-  title     String
-  body      String 
-  type      String   @default("info")
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-
-model CrmNote {
-  id        String   @id @default(cuid())
-  agent     User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  agentId   String
-  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  leadId    String?
-  note      String  
-  createdAt DateTime @default(now())
-}
-
-model Commission {
-  id            String   @id @default(cuid())
-  agent         User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  agentId       String
-  propertyRef   String?
-  leadId        String?
-  dealValue     Float
-  commissionPct Float    @default(2.0)
-  commissionAmt Float
-  status        String   @default("pending")
-  paidAt        DateTime?
-  createdAt     DateTime @default(now())
-}
-
-model NewsletterSubscriber {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  locale    String?  @default("en")
-  createdAt DateTime @default(now())
-}
-
-model ValuationRequest {
-  id           String   @id @default(cuid())
-  name         String
-  email        String
-  phone        String?
-  whatsapp     String?
-  propertyType String?
-  community    String?
-  bedrooms     Int?
-  bathrooms    Int?
-  area         Float?
-  condition    String?
-  ownership    String?
-  timeline     String?
-  message   String? 
-
-  status       String   @default("new")
-  createdAt    DateTime @default(now())
-}
-
-model MortgageEnquiry {
-  id           String   @id @default(cuid())
-  name         String
-  email        String
-  phone        String?
-  propertyPrice Float
-  downPayment  Float
-  loanTenor    Int?
-  employment   String?
-  salary       Float?
-  residency    String?
-  status       String   @default("new")
-  createdAt    DateTime @default(now())
-}
-
-model Agent {
-  id                String   @id @default(cuid())
-  name              String
-  title             String
-  photo             String
-  phone             String
-  whatsapp          String
-  email             String   @unique
-  languages         String  
-  specializations   String  
-  communities       String  
-  biography         String 
-  awards            String  
-  rating            Float    @default(5.0)
-  reviewsCount      Int      @default(0)
-  activeListings    Int      @default(0)
-  soldProperties    Int      @default(0)
-  experienceYears   Int      @default(0)
-  linkedin          String?
-  instagram         String?
-  twitter           String?
-  order             Int      @default(0)
-  published         Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model Community {
-  id              String   @id @default(cuid())
-  name            String
-  shortName       String
-  hero            String
-  overview        String 
-  lifestyle       String 
-  averagePrice    String
-  pricePerSqft    String
-  roi             String
-  population      String
-  totalProperties Int
-  rating          Float    @default(4.5)
-  highlights      String  
-  schools         String  
-  hospitals       String  
-  transport       String  
-  shopping        String  
-  nearbyCommunities String
-  stats           String  
-  published       Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Developer {
-  id                String   @id @default(cuid())
-  name              String
-  logo              String
-  founded           String
-  headquarters      String
-  overview          String 
-  totalProjects     Int
-  completedProjects Int
-  ongoingProjects   Int
-  awards            String  
-  hero              String
-  topProjects       String  
-  published         Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model BlogPost {
-  id        String   @id @default(cuid())
-  title     String
-  excerpt   String
-  category  String
-  date      DateTime @default(now())
-  readTime  String
-  authorName String
-  image     String
-  content   String? 
-
-  published Boolean  @default(true)
-  authorId  String?
-  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Testimonial {
-  id        String   @id @default(cuid())
-  name      String
-  role      String
-  location  String
-  avatar    String
-  rating    Int      @default(5)
-  quote     String 
-  service   String
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-}
-
-model Award {
-  id        String   @id @default(cuid())
-  title     String
-  issuer    String
-  year      String
-  icon      String   @default("award")
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-}
+// ─── Content Management ─────────────────────────────────
 
 model SiteSetting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String  
-  category  String   @default("general")
+  value     String
+  category  String?
   updatedAt DateTime @updatedAt
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  actor     String
-  action    String
-  entity    String?
-  entityId  String?
-  meta      String? 
-  createdAt DateTime @default(now())
-}
-
-model HeroSlide {
-  id        String   @id @default(cuid())
-  order     Int      @default(0)
-  heading1  String
-  heading2  String
-  heading3  String?
-  subtitle  String  
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Location {
-  id        String   @id @default(cuid())
-  name      String
-  emirate   String   @default("Dubai")
-  country   String   @default("UAE")
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PropertyCategory {
-  id        String   @id @default(cuid())
-  name      String
-  type      String   @default("residential")
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Amenity {
-  id        String   @id @default(cuid())
-  name      String
-  category  String   @default("indoor")
-  icon      String?
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ActivityLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  userName  String
-  userRole  String
-  action    String
-  entity    String
-  entityId  String?
-  details   String? 
-  ipAddress String?
-  createdAt DateTime @default(now())
-}
-
-model MediaFile {
-  id        String   @id @default(cuid())
-  filename  String
-  url       String
-  type      String
-  folder    String   @default("general")
-  size      Int      @default(0)
-  altTag    String?
-  caption   String?
-  uploadedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Popup {
-  id          String   @id @default(cuid())
-  title       String
-  content     String  
-  type        String   @default("info")
-  trigger     String   @default("immediate")
-  delaySeconds Int     @default(0)
-  position    String   @default("center")
-  imageUrl    String?
-  buttonText  String?
-  buttonLink  String?
-  startDate   DateTime?
-  endDate     DateTime?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model SeoMeta {
-  id              String   @id @default(cuid())
-  pageSlug        String   @unique
-  metaTitle       String?
-  metaDescription String? 
-  canonicalUrl    String?
-  ogTitle         String?
-  ogDescription   String? 
-  ogImage         String?
-  twitterCard     String?  @default("summary_large_image")
-  keywords        String?
-  structuredData  String? 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 }
 
 model MenuItem {
@@ -505,55 +144,78 @@ model MenuItem {
   visible   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@index([menu, visible])
-  @@index([parentId])
 }
 
-model EmailTemplate {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
-  subject     String
-  body        String 
-  category    String   @default("transactional")
-  variables   String? 
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String?
+  location  String?
+  avatar    String?
+  rating    Int      @default(5)
+  quote     String
+  service   String?
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model LandingPage {
+model Community {
+  id        String   @id @default(cuid())
+  name      String
+  shortName String?
+  hero      String?
+  overview  String?
+  lifestyle String?
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Developer {
+  id        String   @id @default(cuid())
+  name      String
+  logo      String?
+  description String?
+  website   String?
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
   id          String   @id @default(cuid())
   title       String
   slug        String   @unique
-  headline    String
-  subheadline String?
-  body        String 
-  heroImage   String?
-  ctaText     String?
-  ctaLink     String?
-  seoTitle    String?
-  seoDescription String?
-  status      String   @default("draft")
+  excerpt     String?
+  body        String
+  coverImage  String?
+  category    String?
+  author      String?
+  published   Boolean  @default(true)
   publishedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-model ReportSnapshot {
-  id          String   @id @default(cuid())
-  type        String
-  period      String
-  summary     String  
-  generatedBy String?
-  createdAt   DateTime @default(now())
-}
-
 model Faq {
   id        String   @id @default(cuid())
   question  String
-  answer    String 
-  category  String   @default("general")
+  answer    String
+  category  String?
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HeroSlide {
+  id        String   @id @default(cuid())
+  heading1  String?
+  heading2  String?
+  heading3  String?
+  subtitle  String?
+  bgImage   String?
   order     Int      @default(0)
   published Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -563,12 +225,12 @@ model Faq {
 model Video {
   id          String   @id @default(cuid())
   title       String
-  advisor     String
-  role        String   @default("Property Consultant")
-  category    String   @default("Market Insights")
-  duration    String   @default("0:00")
-  thumbnail   String
-  description String 
+  advisor     String?
+  role        String?
+  category    String?
+  duration    String?
+  thumbnail   String?
+  description String?
   videoUrl    String?
   youtubeUrl  String?
   order       Int      @default(0)
@@ -577,25 +239,73 @@ model Video {
   updatedAt   DateTime @updatedAt
 }
 
-model StoryEvent {
-  id            String   @id @default(cuid())
-  title         String
-  slug          String   @unique @default(cuid())
-  description   String 
-  eventDate     DateTime
-  location      String?
-  category      String   @default("milestone")
-  developer     String?
-  tags   String  @default("[]")
+model Award {
+  id          String   @id @default(cuid())
+  title       String
+  organization String?
+  year        String?
+  description String?
+  image       String?
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-  featuredImage String?
-  images   String  @default("[]")
+model Popup {
+  id          String   @id @default(cuid())
+  title       String?
+  content     String?
+  type        String?
+  trigger     String?
+  delaySeconds Int     @default(5)
+  position    String?
+  imageUrl    String?
+  buttonText  String?
+  buttonLink  String?
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-  videoUrl      String?
-  highlighted   Boolean  @default(false)
-  featured      Boolean  @default(false)
-  order         Int      @default(0)
-  published     Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model SeoMeta {
+  id              String   @id @default(cuid())
+  pageSlug        String   @unique
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LandingPage {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  seoTitle    String?
+  seoDescription String?
+  content     String
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MediaFile {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  type      String
+  folder    String   @default("general")
+  size      Int      @default(0)
+  altTag    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }

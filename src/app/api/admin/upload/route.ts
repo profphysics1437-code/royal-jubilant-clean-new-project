@@ -6,20 +6,23 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Hardcoded Supabase config (bypasses Hostinger env var issues)
-const SUPA_URL = 'https://' + 'vxmxxoymiwpoaekgmigb' + '.supabase.co';
-const SUPA_KEY = 'sb_' + 'secret_' + 'ZK-TtVrQQ1GH1dFyrqEZzA_0h1bgS3D';
+// ─── Supabase Storage Config ────────────────────────────
+// Hardcoded to bypass env var issues on Hostinger
+const SUPABASE_URL = 'https://' + 'vxmxxoymiwpoaekgmigb' + '.supabase.co';
+const SUPABASE_KEY = 'sb_' + 'secret_' + 'ZK-TtVrQQ1GH1dFyrqEZzA_0h1bgS3D';
 
 function getSupabase() {
-  return createClient(SUPA_URL, SUPA_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
+// ─── POST: Upload files to Supabase Storage ─────────────
+
 export async function POST(req: NextRequest) {
+  // Require admin or agent
   const u = await requireAdmin();
   if (u) return u;
 
   const supabase = getSupabase();
-
   const formData = await req.formData();
   const files = formData.getAll("files") as File[];
   const folder = (formData.get("folder") as string) || "general";
@@ -39,7 +42,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('media')
         .upload(storagePath, buffer, {
           contentType: file.type,
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
 
       const url = publicUrlData.publicUrl;
 
+      // Save metadata to database
       const mediaFile = await db.mediaFile.create({
         data: {
           filename: file.name,
@@ -79,4 +83,22 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ files: uploadedFiles });
+}
+
+// ─── GET: List media files ──────────────────────────────
+
+export async function GET(req: NextRequest) {
+  const u = await requireAdmin();
+  if (u) return u;
+  
+  const { searchParams } = new URL(req.url);
+  const folder = searchParams.get("folder");
+  
+  const files = await db.mediaFile.findMany({
+    where: folder ? { folder } : undefined,
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+  
+  return NextResponse.json({ files });
 }
