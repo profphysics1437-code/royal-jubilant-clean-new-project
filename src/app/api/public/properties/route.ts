@@ -3,6 +3,16 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Helper: safely parse JSON string fields
+function parseJsonField(field: string | null | undefined, fallback: any = []) {
+  if (!field) return fallback;
+  try {
+    return JSON.parse(field);
+  } catch {
+    return fallback;
+  }
+}
+
 // GET: Public property listings
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -22,5 +32,13 @@ export async function GET(req: NextRequest) {
     take: limit,
   });
 
-  return NextResponse.json({ properties });
+  // Parse JSON string fields for frontend
+  const parsedProperties = properties.map((p) => ({
+    ...p,
+    images: parseJsonField(p.images, []),
+    amenities: parseJsonField(p.amenities, []),
+    features: parseJsonField(p.features, []),
+  }));
+
+  return NextResponse.json({ properties: parsedProperties });
 }
