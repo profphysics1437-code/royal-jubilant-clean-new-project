@@ -5,10 +5,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Force webpack instead of Turbopack for stability on shared hosting
-  experimental: {
-    turbopack: false,
-  },
 };
 
 export default nextConfig;

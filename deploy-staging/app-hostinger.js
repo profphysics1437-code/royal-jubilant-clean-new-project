@@ -1,8 +1,0 @@
-const fs = require('fs');
-const path = require('path');
-const appDir = __dirname;
-const dbFile = path.join(appDir, 'db', 'custom.db');
-if (!fs.existsSync(path.dirname(dbFile))) fs.mkdirSync(path.dirname(dbFile), { recursive: true });
-process.env.DATABASE_URL = `file:${dbFile}`;
-console.log('[resolve-db] DATABASE_URL =', process.env.DATABASE_URL);
-require('./server.js');
