@@ -16,27 +16,48 @@ interface Props {
 /**
  * Premium property image gallery for Royal Jubilant Real Estate.
  *
- * Layout: 3-photo collage at top (1 large + 2 stacked). Click ANY image
- * to open the full-screen lightbox starting at that index.
+ * LAYOUT (responsive):
  *
- * Adapts gracefully:
- *   • 1 image  → full-width single hero
- *   • 2 images → 50/50 split
- *   • 3 images → 1 large + 2 stacked
- *   • 4+ images → 1 large + 2 stacked + "+X Photos" overlay
+ *   Desktop (sm+):
+ *     ┌──────────────────────┬───────────────┐
+ *     │                      │   Photo 2     │
+ *     │   Main Photo (1)     ├───────────────┤
+ *     │                      │   Photo 3     │
+ *     │                      │   +X Photos   │
+ *     └──────────────────────┴───────────────┘
+ *
+ *   Mobile (<sm):
+ *     ┌─────────────────────────────────────────┐
+ *     │           Main Photo (1)                │
+ *     │           [N photos] [expand icon]      │
+ *     └─────────────────────────────────────────┘
+ *     [Thumb1] [Thumb2] [Thumb3] [Thumb4] →   ← horizontal scroll
+ *
+ * Click ANY image (main, thumbnail, or stacked side image) → opens the
+ * full-screen lightbox at that index.
  *
  * Lightbox features:
  *   • Opens at the clicked image's index (not always 0)
  *   • Smooth fade+scale transitions
  *   • Prev/Next chevrons (gold on hover)
  *   • Image counter "1 / N" (monospace)
- *   • Bottom thumbnail strip (desktop)
+ *   • Bottom thumbnail strip (desktop only — thumbs already exist outside
+ *     lightbox on mobile)
  *   • Mobile swipe (Framer Motion drag, 50px threshold)
  *   • Keyboard nav: ArrowLeft/Right + Escape
  *   • Body scroll lock while open
  *
  * Design: Royal Jubilant brand — Navy #0A1F44, Gold #C9A961, Silver #9CA3AF,
- * White. Mobile-first: no horizontal scroll, touch-friendly tap targets.
+ * White. Mobile-first: no horizontal page overflow, touch-friendly tap targets.
+ *
+ * Mobile thumbnail strip:
+ *   • Uses overflow-x-auto with -webkit-overflow-scrolling: touch
+ *   • Each thumb: flex-shrink-0, 64px wide, 48px tall (16:12 ratio)
+ *   • Active thumb has gold border
+ *   • Tapping a thumb changes the main image immediately (no lightbox)
+ *   • Container has min-w-0 to prevent flex blowout
+ *   • Never causes page-wide horizontal overflow (strip is scoped to its
+ *     own container, not the page)
  */
 export function PropertyGallery({ title, images, statusLabel }: Props) {
   // ── Sanitize input: filter empties, dedupe, trim ─────────────────────────
@@ -57,6 +78,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   const total = cleanImages.length;
   const hasMultiple = total > 1;
 
+  // activeIndex is the currently-displayed main image (mobile + lightbox)
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [brokenSet, setBrokenSet] = useState<Set<number>>(new Set());
@@ -78,11 +100,11 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   // ── Navigation handlers ─────────────────────────────────────────────────
   const goTo = useCallback(
     (idx: number) => {
-      if (!hasMultiple || visibleTotal === 0) return;
+      if (visibleTotal === 0) return;
       const next = ((idx % visibleTotal) + visibleTotal) % visibleTotal;
       setActiveIndex(next);
     },
-    [hasMultiple, visibleTotal]
+    [visibleTotal]
   );
 
   const goNext = useCallback(() => goTo(activeIndex + 1), [goTo, activeIndex]);
@@ -92,6 +114,11 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   const openLightbox = useCallback((idx: number) => {
     setActiveIndex(idx);
     setLightboxOpen(true);
+  }, []);
+
+  // Tap a thumbnail on mobile — change main image WITHOUT opening lightbox
+  const selectThumb = useCallback((idx: number) => {
+    setActiveIndex(idx);
   }, []);
 
   // ── Keyboard navigation (only when lightbox is open) ────────────────────
@@ -135,25 +162,124 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   }
 
   // ── Helper: render a single image with error fallback ──────────────────
-  const renderImage = (url: string, alt: string) => (
+  const renderImage = (url: string, alt: string, className = "") => (
     <img
       src={url}
       alt={alt}
       loading="lazy"
-      className="w-full h-full object-cover"
+      className={`w-full h-full object-cover ${className}`}
       onError={() => handleImageError(url)}
       draggable={false}
     />
   );
 
   // ═══════════════════════════════════════════════════════════════════════
-  // COLLAGE LAYOUT — adapts to image count
+  // MOBILE LAYOUT — main image + horizontal thumbnail strip below
+  // (visible on screens < sm = 640px)
   // ═══════════════════════════════════════════════════════════════════════
-  const renderCollage = () => {
+  const renderMobileGallery = () => (
+    <div className="sm:hidden flex flex-col gap-2 min-w-0">
+      {/* Main image — click opens lightbox */}
+      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-[#F4F5F7] group cursor-zoom-in">
+        <button
+          onClick={() => openLightbox(activeIndex)}
+          aria-label={`Open gallery — image ${activeIndex + 1} of ${visibleTotal}`}
+          className="block w-full h-full"
+        >
+          {renderImage(
+            visibleImages[activeIndex],
+            `${title} — image ${activeIndex + 1} of ${visibleTotal}`
+          )}
+        </button>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
+        {statusLabel && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md pointer-events-none">
+            {statusLabel}
+          </span>
+        )}
+        {/* Counter badge — bottom-left, indicates how many photos available */}
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono pointer-events-none">
+          <Images className="size-3" /> {activeIndex + 1} / {visibleTotal}
+        </span>
+        {/* Expand icon — bottom-right */}
+        <div className="absolute bottom-3 right-3 size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none">
+          <Maximize2 className="size-4 text-[#0A1F44]" />
+        </div>
+        {/* Prev/Next chevrons (only when multiple) */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goPrev();
+              }}
+              aria-label="Previous image"
+              className="absolute top-1/2 left-2 -translate-y-1/2 size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md active:scale-95 transition-transform"
+            >
+              <ChevronLeft className="size-5 text-[#0A1F44]" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goNext();
+              }}
+              aria-label="Next image"
+              className="absolute top-1/2 right-2 -translate-y-1/2 size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md active:scale-95 transition-transform"
+            >
+              <ChevronRight className="size-5 text-[#0A1F44]" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Horizontal thumbnail strip — touch-scrollable, no page overflow.
+          min-w-0 on parent prevents flex blowout; overflow-x-auto on the
+          strip itself keeps scrolling scoped to this container only. */}
+      {hasMultiple && (
+        <div
+          className="flex gap-1.5 overflow-x-auto pb-1 min-w-0"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "thin",
+            msOverflowStyle: "none",
+          }}
+        >
+          {visibleImages.map((img, idx) => (
+            <button
+              key={`thumb-${img}-${idx}`}
+              onClick={() => selectThumb(idx)}
+              aria-label={`View image ${idx + 1}`}
+              aria-current={idx === activeIndex}
+              className={`flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all ${
+                idx === activeIndex
+                  ? "border-[#C9A961] shadow-sm"
+                  : "border-transparent opacity-70 active:opacity-100"
+              }`}
+              style={{ minWidth: "64px" }}
+            >
+              <img
+                src={img}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+                draggable={false}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DESKTOP COLLAGE — 1 large left + 2 stacked right (unchanged from before)
+  // (visible on screens >= sm = 640px)
+  // ═══════════════════════════════════════════════════════════════════════
+  const renderDesktopCollage = () => {
     // ── 1 image: full-width single hero ──
     if (visibleTotal === 1) {
       return (
-        <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#F4F5F7] group cursor-zoom-in">
+        <div className="hidden sm:block relative aspect-[16/9] rounded-2xl overflow-hidden bg-[#F4F5F7] group cursor-zoom-in">
           <button
             onClick={() => openLightbox(0)}
             aria-label="Open full-screen gallery"
@@ -167,7 +293,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               {statusLabel}
             </span>
           )}
-          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none">
+          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none group-hover:scale-110 transition-transform">
             <Maximize2 className="size-4 text-[#0A1F44]" />
           </div>
         </div>
@@ -177,11 +303,11 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
     // ── 2 images: 50/50 split ──
     if (visibleTotal === 2) {
       return (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden">
+        <div className="hidden sm:grid grid-cols-2 gap-3 rounded-2xl overflow-hidden">
           <button
             onClick={() => openLightbox(0)}
             aria-label="Open gallery — image 1"
-            className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+            className="relative aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
           >
             {renderImage(visibleImages[0], `${title} — image 1 of 2`)}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
@@ -197,7 +323,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
           <button
             onClick={() => openLightbox(1)}
             aria-label="Open gallery — image 2"
-            className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+            className="relative aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
           >
             {renderImage(visibleImages[1], `${title} — image 2 of 2`)}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
@@ -214,12 +340,12 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
     const extraCount = visibleTotal - 3;
 
     return (
-      <div className="grid grid-cols-4 grid-rows-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden aspect-[16/10] sm:aspect-[16/9]">
+      <div className="hidden sm:grid grid-cols-4 grid-rows-2 gap-3 rounded-2xl overflow-hidden aspect-[16/9]">
         {/* Main image (left, spans 2 rows) */}
         <button
           onClick={() => openLightbox(0)}
           aria-label="Open gallery — main image"
-          className="relative col-span-4 sm:col-span-3 row-span-2 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+          className="relative col-span-3 row-span-2 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
           {renderImage(visibleImages[0], `${title} — image 1 of ${visibleTotal}`)}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/35 via-transparent to-transparent pointer-events-none" />
@@ -231,17 +357,13 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
           <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none group-hover:scale-110 transition-transform">
             <Maximize2 className="size-4 text-[#0A1F44]" />
           </div>
-          {/* Mobile counter badge */}
-          <span className="sm:hidden absolute bottom-4 left-4 inline-flex items-center gap-1 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono pointer-events-none">
-            <Images className="size-3" /> {visibleTotal} photos
-          </span>
         </button>
 
-        {/* Image 2 (top-right) — hidden on mobile to keep layout clean */}
+        {/* Image 2 (top-right) */}
         <button
           onClick={() => openLightbox(1)}
           aria-label="Open gallery — image 2"
-          className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+          className="relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
           {renderImage(visibleImages[1], `${title} — image 2 of ${visibleTotal}`)}
           <div className="absolute inset-0 bg-[#0A1F44]/0 group-hover:bg-[#0A1F44]/15 transition-colors pointer-events-none" />
@@ -255,10 +377,9 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               ? `Open gallery — view all ${visibleTotal} photos`
               : "Open gallery — image 3"
           }
-          className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+          className="relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
           {renderImage(visibleImages[2], `${title} — image 3 of ${visibleTotal}`)}
-          {/* Dark overlay so the "+X Photos" text is legible */}
           <div className="absolute inset-0 bg-[#0A1F44]/20 group-hover:bg-[#0A1F44]/40 transition-colors pointer-events-none flex items-center justify-center">
             {hasMoreThanThree && (
               <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-[#0A1F44] text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5">
@@ -280,7 +401,11 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
 
   return (
     <>
-      {renderCollage()}
+      {/* Mobile gallery (main + horizontal thumbnail strip) */}
+      {renderMobileGallery()}
+
+      {/* Desktop collage (1 large + 2 stacked) */}
+      {renderDesktopCollage()}
 
       {/* ─────────────────────────────────────────────────────────────────
           FULL-SCREEN LIGHTBOX
@@ -322,7 +447,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
 
             {/* Center: large image with swipe support */}
             <motion.div
-              className="relative max-w-[90vw] max-h-[80vh] flex items-center justify-center"
+              className="relative max-w-[90vw] max-h-[80vh] flex items-center justify-center min-w-0"
               drag={hasMultiple ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
@@ -376,7 +501,8 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               </>
             )}
 
-            {/* Bottom thumbnail strip (desktop only) */}
+            {/* Bottom thumbnail strip (desktop only — mobile users already
+                have a thumbnail strip outside the lightbox) */}
             {hasMultiple && (
               <div className="hidden sm:flex absolute bottom-0 inset-x-0 p-6 gap-2 overflow-x-auto justify-start max-w-full">
                 {visibleImages.map((img, idx) => (

@@ -159,6 +159,26 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // ── Mobile drawer: lock body scroll + ESC key to close ────────────────
+  // When the drawer is open, prevent the underlying page from scrolling
+  // horizontally OR vertically. ESC key closes the drawer (accessibility).
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileMenuOpen, setMobileMenuOpen]);
+
   const handleNavClick = (item: any) => {
     setMobileMenuOpen(false);
     // External URL takes precedence if no view
@@ -385,8 +405,10 @@ export function Navbar() {
 
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMobileMenuOpen(true); }}
-              className="xl:hidden relative z-50 size-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0 touch-manipulation"
-              aria-label="Open menu"
+              className="xl:hidden relative z-[80] size-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0 touch-manipulation"
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav-drawer"
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <Menu className="size-6 text-white" />
@@ -395,30 +417,51 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* ─── Mobile menu ─── */}
+      {/* ─── Mobile navigation drawer ───
+          Proper viewport-level overlay drawer:
+          - position: fixed, inset: 0 → covers full viewport
+          - backdrop: semi-transparent + blur, click to close
+          - drawer: width = min(85vw, 380px) → always visible portion of
+            backdrop so user understands menu is open
+          - slides in from right (x: 100% → 0)
+          - high z-index so it covers everything including AI widget
+          - body scroll lock + ESC key handled in useEffect above
+          - aria-label on close button for accessibility */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
+            {/* Backdrop — click anywhere to close */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]"
               onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
             />
+            {/* Drawer — viewport-relative width, slides in from right */}
             <motion.div
+              id="mobile-nav-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation menu"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "tween", duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-[#0A1F44] z-[70] overflow-y-auto"
+              className="fixed top-0 right-0 bottom-0 bg-[#0A1F44] z-[90] overflow-y-auto shadow-2xl"
+              style={{
+                width: "min(85vw, 380px)",
+                WebkitOverflowScrolling: "touch",
+              }}
             >
+              {/* Sticky header inside drawer — logo + close button */}
               <div className="sticky top-0 bg-[#0A1F44] z-10 flex items-center justify-between p-5 border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <img src="/logo.png" alt="Royal Jubilant" className="size-10 object-contain" />
-                  <div className="flex flex-col leading-none text-left">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img src="/logo.png" alt="Royal Jubilant" className="size-10 object-contain flex-shrink-0" />
+                  <div className="flex flex-col leading-none text-left min-w-0">
                     <span
-                      className="font-serif text-base font-semibold tracking-normal text-left block"
+                      className="font-serif text-base font-semibold tracking-normal text-left block truncate"
                       style={{
                         background: "linear-gradient(135deg, #B8860B 0%, #D4AF37 35%, #F9D777 50%, #D4AF37 65%, #B8860B 100%)",
                         WebkitBackgroundClip: "text",
@@ -432,8 +475,8 @@ export function Navbar() {
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="size-10 rounded-full hover:bg-white/10 flex items-center justify-center"
-                  aria-label="Close menu"
+                  className="size-10 rounded-full hover:bg-white/10 flex items-center justify-center flex-shrink-0 transition-colors"
+                  aria-label="Close navigation menu"
                 >
                   <X className="size-5 text-white" />
                 </button>

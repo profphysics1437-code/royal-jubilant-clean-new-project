@@ -543,7 +543,7 @@ export default async function PropertyDetailPage({
 
       {/* Floor plan / video / virtual tour */}
       {(property.floorPlanUrl || property.videoUrl || property.virtualTourUrl) && (
-        <section className="container mx-auto px-4 lg:px-6 pb-12 space-y-6">
+        <section className="container mx-auto px-4 lg:px-6 pb-12 space-y-6 min-w-0">
           {property.floorPlanUrl && (
             <div>
               <h2 className="font-serif text-xl text-[#0A1F44] mb-3">
@@ -559,16 +559,28 @@ export default async function PropertyDetailPage({
             </div>
           )}
           {property.videoUrl && (
-            <div>
+            <div className="min-w-0">
               <h2 className="font-serif text-xl text-[#0A1F44] mb-3">
                 Property Video
               </h2>
-              <div className="rounded-2xl overflow-hidden border border-[#E5E7EB] aspect-video bg-black">
+              {/* Responsive video wrapper.
+                  - max-w-full + w-full ensures it never exceeds parent width
+                  - aspect-video gives 16:9 ratio; overflow-hidden clips any
+                    native video controls that might overflow on iOS Safari
+                  - min-w-0 lets the wrapper shrink inside flex/grid parents
+                  - video element uses block + w-full + h-full + object-contain
+                    so it always fits inside the wrapper regardless of the
+                    video's intrinsic dimensions */}
+              <div
+                className="relative w-full max-w-full rounded-2xl overflow-hidden border border-[#E5E7EB] bg-black min-w-0"
+                style={{ aspectRatio: "16 / 9" }}
+              >
                 <video
                   src={property.videoUrl}
                   controls
-                  className="w-full h-full"
+                  playsInline
                   preload="metadata"
+                  className="absolute inset-0 block w-full h-full max-w-full object-contain"
                 />
               </div>
             </div>
