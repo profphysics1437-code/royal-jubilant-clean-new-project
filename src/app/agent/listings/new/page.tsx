@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  COUNTRIES, EMIRATES, DUBAI_COMMUNITIES,
+  COUNTRIES, EMIRATES,
   RESIDENTIAL_TYPES, COMMERCIAL_TYPES,
   COMPLETION_STATUSES, FURNISHING_STATUSES, RENT_FREQUENCIES, CHEQUE_OPTIONS,
   BEDROOM_OPTIONS, BATHROOM_OPTIONS,
@@ -27,6 +27,7 @@ import {
   NEARBY_LANDMARKS, VIEW_OPTIONS,
 } from "@/components/admin/CheckboxGrid";
 import { PhotoUploader } from "@/components/admin/PhotoUploader";
+import { useLocations } from "@/lib/useLocations";
 
 const SECTIONS = [
   { num: "01", title: "Listing Type", icon: Tag },
@@ -41,6 +42,9 @@ const SECTIONS = [
 
 export default function AddProperty() {
   const router = useRouter();
+  // Fetch published locations from DB (single source of truth) — replaces
+  // the hardcoded DUBAI_COMMUNITIES array. Same data the admin portal uses.
+  const { locationNames: communityOptions, loading: locationsLoading } = useLocations();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({
@@ -363,9 +367,9 @@ export default function AddProperty() {
                     </Field>
                   </div>
                   <Field label="Community / Area *">
-                    <select value={form.community} onChange={(e) => set("community", e.target.value)} className="w-full h-10 px-3 bg-[#F9FAFB] rounded-lg border border-border text-sm">
-                      <option value="">Select a community…</option>
-                      {DUBAI_COMMUNITIES.map((c) => <option key={c}>{c}</option>)}
+                    <select value={form.community} onChange={(e) => set("community", e.target.value)} className="w-full h-10 px-3 bg-[#F9FAFB] rounded-lg border border-border text-sm" disabled={locationsLoading}>
+                      <option value="">{locationsLoading ? "Loading locations…" : "Select a community…"}</option>
+                      {communityOptions.map((c) => <option key={c}>{c}</option>)}
                     </select>
                   </Field>
                   <Field label="Sub-Community (optional)">

@@ -8,13 +8,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  COUNTRIES, EMIRATES, DUBAI_COMMUNITIES,
+  COUNTRIES, EMIRATES,
   RESIDENTIAL_TYPES, COMMERCIAL_TYPES,
 } from "@/lib/property-options";
 import { properties as fallbackProperties, Property } from "@/lib/data";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { useStore } from "@/lib/store";
 import { useApi } from "@/lib/useApi";
+import { useLocations } from "@/lib/useLocations";
 
 interface Props {
   /** sale | rent | rent-rooms | rent-holiday | rent-monthly | rent-daily | commercial | commercial-rent | commercial-sale | off-plan | all | luxury */
@@ -132,6 +133,10 @@ const titles: Record<Props["filter"], { title: string; subtitle: string }> = {
 
 export function PropertyListView({ filter, title, subtitle }: Props) {
   const meta = titles[filter];
+
+  // Fetch published locations from DB (single source of truth) — same data
+  // the admin portal uses. Replaces the hardcoded DUBAI_COMMUNITIES array.
+  const { locationNames: communityOptions } = useLocations();
 
   // Fetch properties from DB (falls back to mock data while loading or on error)
   const { data } = useApi<{ properties: Property[] }>("/api/public/properties?limit=0", { properties: fallbackProperties });
@@ -397,13 +402,13 @@ export function PropertyListView({ filter, title, subtitle }: Props) {
             />
             )}
 
-            {/* Community dropdown */}
+            {/* Community dropdown — uses DB-backed locations (single source of truth) */}
             <DropdownSelect
               label="Location"
               icon={<MapPin className="size-3.5" />}
               value={community}
-              options={["", ...DUBAI_COMMUNITIES]}
-              optionLabels={["All Locations", ...DUBAI_COMMUNITIES]}
+              options={["", ...communityOptions]}
+              optionLabels={["All Locations", ...communityOptions]}
               onChange={setCommunity}
             />
 

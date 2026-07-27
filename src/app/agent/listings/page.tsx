@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/data";
 import {
-  COUNTRIES, EMIRATES, DUBAI_COMMUNITIES,
+  COUNTRIES, EMIRATES,
   RESIDENTIAL_TYPES, COMMERCIAL_TYPES,
   COMPLETION_STATUSES, FURNISHING_STATUSES, RENT_FREQUENCIES, CHEQUE_OPTIONS,
   BEDROOM_OPTIONS, BATHROOM_OPTIONS,
@@ -24,6 +24,7 @@ import {
   NEARBY_LANDMARKS, VIEW_OPTIONS,
 } from "@/components/admin/CheckboxGrid";
 import { PhotoUploader } from "@/components/admin/PhotoUploader";
+import { useLocations } from "@/lib/useLocations";
 
 const parseArr = (v: string | null | undefined) => {
   if (!v) return [];
@@ -110,6 +111,9 @@ export default function AgentListings() {
 }
 
 function EditListing({ property, onClose, onSaved }: { property: any; onClose: () => void; onSaved: () => void }) {
+  // Fetch published locations from DB (single source of truth) — same data
+  // the admin portal uses. Replaces the hardcoded DUBAI_COMMUNITIES array.
+  const { locationNames: communityOptions, loading: locationsLoading } = useLocations();
   const [form, setForm] = useState<any>({
     ...property,
     images: parseArr(property.images),
@@ -196,9 +200,15 @@ function EditListing({ property, onClose, onSaved }: { property: any; onClose: (
             </Field>
           </div>
           <Field label="Community">
-            <select value={form.community} onChange={(e) => set("community", e.target.value)} className="w-full h-10 px-3 bg-[#F9FAFB] rounded-lg border border-border text-sm">
-              <option value="">Select…</option>
-              {DUBAI_COMMUNITIES.map((c) => <option key={c}>{c}</option>)}
+            <select value={form.community} onChange={(e) => set("community", e.target.value)} className="w-full h-10 px-3 bg-[#F9FAFB] rounded-lg border border-border text-sm" disabled={locationsLoading}>
+              <option value="">{locationsLoading ? "Loading locations…" : "Select…"}</option>
+              {communityOptions.map((c) => <option key={c}>{c}</option>)}
+              {/* Preserve the property's existing community value even if it's
+                  not in the current DB list (defensive — prevents the value
+                  from being silently cleared when the source DB list changes). */}
+              {form.community && !communityOptions.includes(form.community) && (
+                <option value={form.community}>{form.community} (not in active list)</option>
+              )}
             </select>
           </Field>
           <Field label="Sub-Community"><Input value={form.subCommunity || ""} onChange={(e) => set("subCommunity", e.target.value)} className="bg-[#F9FAFB]" /></Field>
