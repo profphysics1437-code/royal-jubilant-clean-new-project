@@ -306,17 +306,17 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       // Card frame — IDENTICAL to PropertyCard.tsx (card size unchanged).
-      // flex flex-col + min-h-0 so the video area can flex-1 to fill.
+      // flex flex-col so the video area can grow to fill the card.
       className="group relative bg-[#0A1F44] rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
     >
       {/* ═══════════════════════════════════════════════════════════════
           VIDEO AREA — fills the ENTIRE card edge to edge.
-          flex-1 + min-h-0 lets the video area grow to fill all
-          available card height. Video + thumbnail both use
+          Uses aspect-[4/3] (same as PropertyCard image area) to define
+          a fixed height for the card. Video + thumbnail both use
           absolute inset-0 + w-full h-full object-cover so they
           completely fill the card with no white space.
           ═══════════════════════════════════════════════════════════════ */}
-      <div className="relative flex-1 min-h-0 overflow-hidden bg-[#0A1F44]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A1F44]">
         {/* Thumbnail — fills entire card, fades out when video plays */}
         <img
           src={video.thumbnail}
