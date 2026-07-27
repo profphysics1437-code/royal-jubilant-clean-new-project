@@ -15,6 +15,20 @@ interface PhotoUploaderProps {
   min?: number;
   /** Max number of photos allowed (default 50) */
   max?: number;
+  /**
+   * Upload API endpoint. Defaults to "/api/admin/upload" (admin portal).
+   * Agent portal should pass "/api/agent/upload" — that route uses
+   * requireAgent() instead of requireAdmin() so agent sessions aren't
+   * rejected with 401.
+   */
+  endpoint?: string;
+  /**
+   * Optional property ID — when editing an existing property, agents should
+   * pass the property ID so the upload route can verify ownership before
+   * storing the file. Ignored if not provided (e.g. when creating a new
+   * property where the ID doesn't exist yet).
+   */
+  propertyId?: string;
 }
 
 interface UploadingFile {
@@ -33,6 +47,8 @@ export function PhotoUploader({
   folder = "properties",
   min = 3,
   max = 50,
+  endpoint = "/api/admin/upload",
+  propertyId,
 }: PhotoUploaderProps) {
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -90,8 +106,11 @@ export function PhotoUploader({
         const formData = new FormData();
         formData.append("files", file);
         formData.append("folder", folder);
+        if (propertyId) {
+          formData.append("propertyId", propertyId);
+        }
 
-        const res = await fetch("/api/admin/upload", {
+        const res = await fetch(endpoint, {
           method: "POST",
           body: formData,
         });

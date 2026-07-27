@@ -61,7 +61,11 @@ export function ProfilePage({ portal }: { portal: "admin" | "agent" }) {
       const formData = new FormData();
       formData.append("files", file);
       formData.append("folder", "avatars");
-      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      // Pick endpoint by portal — agents can't pass requireAdmin() on
+      // /api/admin/upload, so they POST to /api/agent/upload instead.
+      const endpoint =
+        portal === "agent" ? "/api/agent/upload" : "/api/admin/upload";
+      const res = await fetch(endpoint, { method: "POST", body: formData });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Upload failed");

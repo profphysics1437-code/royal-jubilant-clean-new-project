@@ -23,6 +23,7 @@ import {
   INDOOR_FEATURES, OUTDOOR_FEATURES, BUILDING_AMENITIES,
   NEARBY_LANDMARKS, VIEW_OPTIONS,
 } from "@/components/admin/CheckboxGrid";
+import { PhotoUploader } from "@/components/admin/PhotoUploader";
 
 const parseArr = (v: string | null | undefined) => {
   if (!v) return [];
@@ -118,20 +119,12 @@ function EditListing({ property, onClose, onSaved }: { property: any; onClose: (
     nearbyLandmarks: parseArr(property.nearbyLandmarks),
     viewFeatures: parseArr(property.viewFeatures),
   });
-  const [imageInput, setImageInput] = useState("");
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
 
   const propertyTypes = form.category === "Residential" ? RESIDENTIAL_TYPES : COMMERCIAL_TYPES;
   const isRent = form.status === "rent";
   const isOffPlan = form.completionStatus === "Off-Plan";
-
-  const addImage = () => {
-    if (!imageInput.trim()) return;
-    set("images", [...form.images, imageInput.trim()]);
-    setImageInput("");
-  };
-  const removeImage = (i: number) => set("images", form.images.filter((_: string, idx: number) => idx !== i));
 
   const handleSave = async () => {
     setSaving(true);
@@ -287,21 +280,16 @@ function EditListing({ property, onClose, onSaved }: { property: any; onClose: (
 
           {/* Section 6 — Media */}
           <SectionTitle num="06" title="Media" />
-          <Field label="Photo URLs">
-            <div className="flex gap-2 mb-2">
-              <Input value={imageInput} onChange={(e) => setImageInput(e.target.value)} className="bg-[#F9FAFB]" placeholder="https://..." />
-              <Button type="button" onClick={addImage} className="bg-royal-gradient-diagonal text-white rounded-lg">Add</Button>
-            </div>
-            {form.images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {form.images.map((img: string, i: number) => (
-                  <div key={i} className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted group">
-                    <img src={img} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 size-6 rounded-full bg-black/60 text-white flex items-center justify-center"><X className="size-3" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
+          <Field label="Property Photos">
+            <PhotoUploader
+              value={form.images}
+              onChange={(urls) => set("images", urls)}
+              folder="properties"
+              min={1}
+              max={50}
+              endpoint="/api/agent/upload"
+              propertyId={property.id}
+            />
           </Field>
           <Field label="Floor Plan URL"><Input value={form.floorPlanUrl || ""} onChange={(e) => set("floorPlanUrl", e.target.value)} className="bg-[#F9FAFB]" /></Field>
           <Field label="Video Tour URL"><Input value={form.videoUrl || ""} onChange={(e) => set("videoUrl", e.target.value)} className="bg-[#F9FAFB]" /></Field>

@@ -555,6 +555,7 @@ export default function AddProperty() {
                       folder="properties"
                       min={3}
                       max={50}
+                      endpoint="/api/agent/upload"
                     />
                   </Field>
 

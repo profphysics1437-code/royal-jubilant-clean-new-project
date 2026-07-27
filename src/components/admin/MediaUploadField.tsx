@@ -21,6 +21,11 @@ interface MediaUploadFieldProps {
   showUrlInput?: boolean;
   /** Preview dimensions */
   previewSize?: "sm" | "md" | "lg";
+  /**
+   * Upload API endpoint. Defaults to "/api/admin/upload" (admin portal).
+   * Agent portal should pass "/api/agent/upload".
+   */
+  endpoint?: string;
 }
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -34,6 +39,7 @@ export function MediaUploadField({
   label,
   showUrlInput = false,
   previewSize = "md",
+  endpoint = "/api/admin/upload",
 }: MediaUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [showUrl, setShowUrl] = useState(showUrlInput);
@@ -73,7 +79,7 @@ export function MediaUploadField({
       formData.append("files", file);
       formData.append("folder", folder);
 
-      const res = await fetch("/api/admin/upload", {
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
