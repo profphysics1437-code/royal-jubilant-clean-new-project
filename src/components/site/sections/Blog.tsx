@@ -311,12 +311,13 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
     >
       {/* ═══════════════════════════════════════════════════════════════
           VIDEO AREA — fills the ENTIRE card edge to edge.
-          Uses aspect-[4/3] (same as PropertyCard image area) to define
-          a fixed height for the card. Video + thumbnail both use
-          absolute inset-0 + w-full h-full object-cover so they
-          completely fill the card with no white space.
+          Uses aspect-[2/3] (height = 1.5× width, i.e. 2× the previous
+          4/3 height) to define a taller fixed height for the card.
+          Width stays exactly the same (unchanged). Video + thumbnail
+          both use absolute inset-0 + w-full h-full object-cover so
+          they completely fill the card with no white space.
           ═══════════════════════════════════════════════════════════════ */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A1F44]">
+      <div className="relative aspect-[2/3] overflow-hidden bg-[#0A1F44]">
         {/* Thumbnail — fills entire card, fades out when video plays */}
         <img
           src={video.thumbnail}
