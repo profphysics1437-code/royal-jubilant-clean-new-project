@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu,
@@ -122,6 +123,13 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [navItems, setNavItems] = useState<any[]>(FALLBACK_NAV);
+  // mounted ensures createPortal only runs on client (avoids SSR hydration
+  // mismatch). The mobile drawer is portaled to document.body so it's
+  // independent of any Homepage-specific ancestor CSS context (transforms,
+  // filters, backdrop-filters, will-change, etc. that create containing
+  // blocks for position:fixed elements).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { get } = useSiteSettings();
   const phone = get("company.phone", "+971 4 327 8401");
   const email = get("company.email", "info@royaljubilant.ae");
@@ -427,34 +435,44 @@ export function Navbar() {
           - high z-index so it covers everything including AI widget
           - body scroll lock + ESC key handled in useEffect above
           - aria-label on close button for accessibility */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop — click anywhere to close */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-hidden="true"
-            />
-            {/* Drawer — viewport-relative width, slides in from right */}
-            <motion.div
-              id="mobile-nav-drawer"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Navigation menu"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween", duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed top-0 right-0 bottom-0 bg-[#0A1F44] z-[90] overflow-y-auto shadow-2xl"
-              style={{
-                width: "min(85vw, 380px)",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+      {/* ─── Mobile navigation drawer ───
+          Rendered via React Portal at document.body level so it's
+          independent of any Homepage-specific ancestor CSS context.
+          On Homepage, the Hero section and header use transforms,
+          filters, and backdrop-filters that create containing blocks
+          for position:fixed descendants — breaking the drawer's
+          viewport-relative positioning. Portaling to body bypasses
+          all ancestor contexts, making the drawer work identically
+          on Homepage and all internal pages. */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              {/* Backdrop — click anywhere to close */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-hidden="true"
+              />
+              {/* Drawer — viewport-relative width, slides in from right */}
+              <motion.div
+                id="mobile-nav-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Navigation menu"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "tween", duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="fixed top-0 right-0 bottom-0 bg-[#0A1F44] z-[90] overflow-y-auto shadow-2xl"
+                style={{
+                  width: "min(85vw, 380px)",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
               {/* Sticky header inside drawer — logo + close button */}
               <div className="sticky top-0 bg-[#0A1F44] z-10 flex items-center justify-between p-5 border-b border-white/10">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -528,7 +546,9 @@ export function Navbar() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

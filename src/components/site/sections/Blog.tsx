@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ArrowRight, Clock, TrendingUp, Building2, Tag, Calculator, X } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -81,6 +82,12 @@ const categoryIcons: Record<string, any> = {
 
 export function VideoSection() {
   const [playingVideo, setPlayingVideo] = useState<any>(null);
+  // mounted ensures createPortal only runs on client (SSR safety).
+  // The video modal is portaled to document.body so it's independent
+  // of this section's overflow-hidden and any Homepage ancestor
+  // transforms that would break position:fixed positioning.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   // Fetch videos from DB; fall back to hardcoded array while loading
   const { data } = useApi<{ videos: any[] }>("/api/public/videos", { videos: advisorVideos });
   const videos = data?.videos || advisorVideos;
@@ -144,7 +151,7 @@ export function VideoSection() {
         </div>
 
         {/* Video gallery — 9:16 portrait cards like a media gallery (max 6 on homepage) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 min-w-0">
           {videos.slice(0, 6).map((video, i) => {
             const Icon = categoryIcons[video.category] || TrendingUp;
             return (
@@ -214,54 +221,63 @@ export function VideoSection() {
         </div>
       </div>
 
-      {/* Video player modal */}
-      <AnimatePresence>
-        {playingVideo && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setPlayingVideo(null)}
-            className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setPlayingVideo(null)}
-              className="absolute top-4 right-4 z-10 size-11 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center backdrop-blur-sm"
-            >
-              <X className="size-5 text-white" />
-            </button>
-
-            {/* Video container — 9:16 portrait on mobile, 16:9 on desktop */}
+      {/* Video player modal — portaled to document.body so it's independent
+          of this section's overflow-hidden and any Homepage ancestor
+          transforms that would break position:fixed positioning. */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {playingVideo && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative bg-[#0A1F44] rounded-2xl overflow-hidden shadow-2xl w-full max-w-sm md:max-w-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPlayingVideo(null)}
+              className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
             >
-              {/* Video — 9:16 on mobile, 16:9 on desktop */}
-              <div className="relative w-full aspect-[9/16] md:aspect-video bg-black">
-                <video
-                  autoPlay
-                  muted
-                  controls
-                  playsInline
-                  className="w-full h-full object-contain"
-                >
-                  <source src={playingVideo.videoUrl} type="video/mp4" />
-                </video>
-              </div>
-              {/* Title bar */}
-              <div className="p-3 md:p-4">
-                <h3 className="font-serif text-sm md:text-base font-medium text-white truncate">{playingVideo.title}</h3>
-                <p className="text-[10px] text-white/50 mt-0.5">{playingVideo.advisor} · {playingVideo.category}</p>
-              </div>
+              {/* Close button */}
+              <button
+                onClick={() => setPlayingVideo(null)}
+                className="absolute top-4 right-4 z-10 size-11 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center backdrop-blur-sm flex-shrink-0"
+              >
+                <X className="size-5 text-white" />
+              </button>
+
+              {/* Video container — 9:16 portrait on mobile, 16:9 on desktop.
+                  max-h-[90vh] prevents the card from exceeding viewport height
+                  on short screens. max-w-full + min-w-0 prevents horizontal
+                  overflow. w-full max-w-sm constrains width on mobile. */}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative bg-[#0A1F44] rounded-2xl overflow-hidden shadow-2xl w-full max-w-sm md:max-w-2xl max-h-[90vh] min-w-0 flex flex-col"
+              >
+                {/* Video — 9:16 on mobile, 16:9 on desktop.
+                    max-h constrains the video area on short screens. */}
+                <div className="relative w-full aspect-[9/16] md:aspect-video bg-black max-h-[80vh] flex-shrink-0">
+                  <video
+                    autoPlay
+                    muted
+                    controls
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-contain"
+                  >
+                    <source src={playingVideo.videoUrl} type="video/mp4" />
+                  </video>
+                </div>
+                {/* Title bar */}
+                <div className="p-3 md:p-4 flex-shrink-0">
+                  <h3 className="font-serif text-sm md:text-base font-medium text-white truncate">{playingVideo.title}</h3>
+                  <p className="text-[10px] text-white/50 mt-0.5">{playingVideo.advisor} · {playingVideo.category}</p>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </section>
   );
 }
