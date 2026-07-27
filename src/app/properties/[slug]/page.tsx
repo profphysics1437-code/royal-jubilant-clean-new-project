@@ -83,6 +83,10 @@ function buildWhatsAppEnquiryMessage(opts: {
   emirate?: string | null;
   price: number;
   rentFrequency?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  area?: number | null;
+  areaUnit?: string | null;
   propertyUrl: string;       // canonical URL of the property detail page
 }): string {
   const greeting = opts.agentName
@@ -109,6 +113,22 @@ function buildWhatsAppEnquiryMessage(opts: {
   const cat = statusLabel(opts.status);
   if (cat) {
     lines.push(``, `🏷 Category`, cat);
+  }
+
+  // 🛏 Details — bedrooms, bathrooms, area (all optional, omitted if 0/null)
+  const detailParts: string[] = [];
+  if (opts.bedrooms && opts.bedrooms > 0) {
+    detailParts.push(`${opts.bedrooms} Bedroom${opts.bedrooms > 1 ? "s" : ""}`);
+  }
+  if (opts.bathrooms && opts.bathrooms > 0) {
+    detailParts.push(`${opts.bathrooms} Bathroom${opts.bathrooms > 1 ? "s" : ""}`);
+  }
+  if (opts.area && opts.area > 0) {
+    const unit = opts.areaUnit || "sqft";
+    detailParts.push(`${opts.area.toLocaleString()} ${unit}`);
+  }
+  if (detailParts.length > 0) {
+    lines.push(``, `🛏 Details`, detailParts.join(` • `));
   }
 
   // 📍 Location (community + emirate, both optional)
@@ -167,6 +187,10 @@ function buildWhatsAppEnquiryUrl(opts: {
   emirate?: string | null;
   price: number;
   rentFrequency?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  area?: number | null;
+  areaUnit?: string | null;
   propertyUrl: string;
 }): string | null {
   if (!opts.whatsapp) return null;
@@ -181,6 +205,10 @@ function buildWhatsAppEnquiryUrl(opts: {
     emirate: opts.emirate,
     price: opts.price,
     rentFrequency: opts.rentFrequency,
+    bedrooms: opts.bedrooms,
+    bathrooms: opts.bathrooms,
+    area: opts.area,
+    areaUnit: opts.areaUnit,
     propertyUrl: opts.propertyUrl,
   });
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
@@ -503,6 +531,10 @@ export default async function PropertyDetailPage({
         emirate: (property as any).emirate,
         price: property.price,
         rentFrequency: property.rentFrequency,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        area: property.area,
+        areaUnit: (property as any).areaUnit,
         propertyUrl,
       })
     : null;
