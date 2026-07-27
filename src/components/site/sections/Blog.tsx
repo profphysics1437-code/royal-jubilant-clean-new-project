@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, ArrowRight, Clock, TrendingUp, Building2, Tag, Calculator, X } from "lucide-react";
+import { Play, ArrowRight, Clock, TrendingUp, Building2, Tag, Calculator, X, Volume2, VolumeX } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useApi } from "@/lib/useApi";
 
@@ -83,16 +83,16 @@ const categoryIcons: Record<string, any> = {
 export function VideoSection() {
   const [playingVideo, setPlayingVideo] = useState<any>(null);
   // mounted ensures createPortal only runs on client (SSR safety).
-  // The video modal is portaled to document.body so it's independent
-  // of this section's overflow-hidden and any Homepage ancestor
-  // transforms that would break position:fixed positioning.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
   // Fetch videos from DB; fall back to hardcoded array while loading
   const { data } = useApi<{ videos: any[] }>("/api/public/videos", { videos: advisorVideos });
   const videos = data?.videos || advisorVideos;
 
   const handleVideoClick = (video: any) => {
+    // If the video has an actual video URL, open the full-screen modal.
+    // Otherwise, no-op (the card already shows the thumbnail + metadata).
     if (video.videoUrl) {
       setPlayingVideo(video);
     }
@@ -100,9 +100,9 @@ export function VideoSection() {
 
   return (
     <section className="bg-[#0A1F44] py-10 lg:py-14 relative overflow-hidden">
-      {/* Subtle dot pattern */}
+      {/* Subtle dot pattern (decorative — kept from previous design) */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, rgba(212, 175, 55, 1) 1px, transparent 0)",
           backgroundSize: "32px 32px",
@@ -111,7 +111,7 @@ export function VideoSection() {
 
       <div className="container mx-auto px-4 lg:px-6 relative">
         {/* Section header */}
-        <div className="max-w-2xl mb-12">
+        <div className="max-w-2xl mb-8 lg:mb-12">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -146,70 +146,51 @@ export function VideoSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="body-text text-white/70"
           >
-            Our advisors share first-hand insights on market opportunities, off-plan projects, and investment strategies — straight from the communities they specialize in. Watch their latest video updates to stay ahead of Dubai's dynamic property market.
+            Our advisors share first-hand insights on market opportunities, off-plan projects, and investment strategies — straight from the communities they specialize in. Swipe through the latest video updates to stay ahead of Dubai's dynamic property market.
           </motion.p>
         </div>
 
-        {/* Video gallery — 9:16 portrait cards like a media gallery (max 6 on homepage) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 min-w-0">
-          {videos.slice(0, 6).map((video, i) => {
-            const Icon = categoryIcons[video.category] || TrendingUp;
-            return (
-              <motion.div
-                key={video.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, delay: i * 0.06 }}
-                onClick={() => handleVideoClick(video)}
-                className="group relative aspect-[9/16] rounded-xl overflow-hidden cursor-pointer bg-[#1E3A6F]"
-              >
-                {/* Thumbnail */}
-                <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover zoom-img"
-                />
+        {/* ════════════════════════════════════════════════════════════════
+            MOBILE: TikTok / Instagram Reels-style horizontal carousel
+            — Full-width 9:16 vertical cards
+            — Horizontal scroll-snap (swipe-friendly)
+            — One card per viewport width (snap-x)
+            — Rounded corners, autoplay-on-visible, muted, loop
+            ════════════════════════════════════════════════════════════════ */}
+        <div
+          className="lg:hidden -mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 min-w-0"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
+        >
+          {videos.slice(0, 8).map((video, i) => (
+            <ReelsCard
+              key={`m-${video.title}-${i}`}
+              video={video}
+              index={i}
+              onClick={() => handleVideoClick(video)}
+              variant="mobile"
+            />
+          ))}
+        </div>
 
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/95 via-[#0A1F44]/20 to-[#0A1F44]/40" />
-
-                {/* Category badge — top left */}
-                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-[#C9A961]">
-                  <span className="text-[8px] text-[#0A1F44] font-bold tracking-wide flex items-center gap-0.5">
-                    <Icon className="size-2.5" />
-                    {video.category}
-                  </span>
-                </div>
-
-                {/* Duration — top right */}
-                <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-[#0A1F44]/80 backdrop-blur-sm">
-                  <span className="text-[8px] text-white font-medium">{video.duration}</span>
-                </div>
-
-                {/* Play button — center */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="size-10 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
-                    <Play className="size-4 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
-                  </div>
-                </div>
-
-                {/* Bottom content — title + advisor */}
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <h3 className="text-white text-xs font-semibold leading-tight line-clamp-2 mb-1.5">
-                    {video.title}
-                  </h3>
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-4 rounded-full bg-[#C9A961] flex items-center justify-center text-[#0A1F44] text-[8px] font-bold flex-shrink-0">
-                      {video.advisor.charAt(0)}
-                    </div>
-                    <span className="text-[9px] text-white/60 truncate">{video.advisor}</span>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+        {/* ════════════════════════════════════════════════════════════════
+            DESKTOP: Premium 9:16 portrait grid (3 columns)
+            — Cards have hover-to-autoplay behavior (muted, loop)
+            — Click opens full-screen modal with audio + controls
+            ════════════════════════════════════════════════════════════════ */}
+        <div className="hidden lg:grid grid-cols-3 gap-5 min-w-0">
+          {videos.slice(0, 6).map((video, i) => (
+            <ReelsCard
+              key={`d-${video.title}-${i}`}
+              video={video}
+              index={i}
+              onClick={() => handleVideoClick(video)}
+              variant="desktop"
+            />
+          ))}
         </div>
 
         {/* View all videos CTA */}
@@ -221,9 +202,12 @@ export function VideoSection() {
         </div>
       </div>
 
-      {/* Video player modal — portaled to document.body so it's independent
-          of this section's overflow-hidden and any Homepage ancestor
-          transforms that would break position:fixed positioning. */}
+      {/* ════════════════════════════════════════════════════════════════
+          Full-screen video modal — portaled to document.body so it's
+          independent of this section's overflow-hidden and any Homepage
+          ancestor transforms that would break position:fixed positioning.
+          Opens when a user taps a card (mobile) or clicks (desktop).
+         ════════════════════════════════════════════════════════════════ */}
       {mounted && createPortal(
         <AnimatePresence>
           {playingVideo && (
@@ -238,14 +222,12 @@ export function VideoSection() {
               <button
                 onClick={() => setPlayingVideo(null)}
                 className="absolute top-4 right-4 z-10 size-11 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center backdrop-blur-sm flex-shrink-0"
+                aria-label="Close video"
               >
                 <X className="size-5 text-white" />
               </button>
 
-              {/* Video container — 9:16 portrait on mobile, 16:9 on desktop.
-                  max-h-[90vh] prevents the card from exceeding viewport height
-                  on short screens. max-w-full + min-w-0 prevents horizontal
-                  overflow. w-full max-w-sm constrains width on mobile. */}
+              {/* Video container — 9:16 portrait on mobile, 16:9 on desktop */}
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -254,8 +236,6 @@ export function VideoSection() {
                 onClick={(e) => e.stopPropagation()}
                 className="relative bg-[#0A1F44] rounded-2xl overflow-hidden shadow-2xl w-full max-w-sm md:max-w-2xl max-h-[90vh] min-w-0 flex flex-col"
               >
-                {/* Video — 9:16 on mobile, 16:9 on desktop.
-                    max-h constrains the video area on short screens. */}
                 <div className="relative w-full aspect-[9/16] md:aspect-video bg-black max-h-[80vh] flex-shrink-0">
                   <video
                     autoPlay
@@ -267,7 +247,6 @@ export function VideoSection() {
                     <source src={playingVideo.videoUrl} type="video/mp4" />
                   </video>
                 </div>
-                {/* Title bar */}
                 <div className="p-3 md:p-4 flex-shrink-0">
                   <h3 className="font-serif text-sm md:text-base font-medium text-white truncate">{playingVideo.title}</h3>
                   <p className="text-[10px] text-white/50 mt-0.5">{playingVideo.advisor} · {playingVideo.category}</p>
@@ -279,6 +258,167 @@ export function VideoSection() {
         document.body
       )}
     </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ReelsCard — single 9:16 vertical video card (TikTok/Instagram-style)
+// ═══════════════════════════════════════════════════════════════════════
+
+interface ReelsCardProps {
+  video: any;
+  index: number;
+  onClick: () => void;
+  variant: "mobile" | "desktop";
+}
+
+function ReelsCard({ video, index, onClick, variant }: ReelsCardProps) {
+  const Icon = categoryIcons[video.category] || TrendingUp;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Desktop only: autoplay (muted, loop) when the card is hovered.
+  // Pause when the cursor leaves. Mobile cards show thumbnail only —
+  // tapping opens the full-screen modal with audio + controls.
+  useEffect(() => {
+    if (variant !== "desktop") return;
+    const v = videoRef.current;
+    if (!v || !video.videoUrl) return;
+    if (isHovered) {
+      v.play().then(() => setIsPlaying(true)).catch(() => {
+        // Autoplay can fail if browser blocks it — keep showing thumbnail
+        setIsPlaying(false);
+      });
+    } else {
+      v.pause();
+      setIsPlaying(false);
+    }
+  }, [isHovered, variant, video.videoUrl]);
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setIsMuted(v.muted);
+  };
+
+  // Mobile: card width = ~70% of viewport, snap-aligned
+  // Desktop: full width of grid column
+  const cardWidthClass = variant === "mobile"
+    ? "w-[78vw] max-w-[280px] flex-shrink-0"
+    : "w-full";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative ${cardWidthClass} aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer bg-[#1E3A6F] snap-center min-w-0 shadow-lg hover:shadow-2xl transition-shadow duration-300`}
+    >
+      {/* Thumbnail (always present) — fades out when video is playing on desktop hover */}
+      <img
+        src={video.thumbnail}
+        alt={video.title}
+        loading="lazy"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
+        }`}
+      />
+
+      {/* Video element — only renders if videoUrl exists.
+          - Desktop: muted, loop, playsInline — plays on hover
+          - Mobile: preloaded metadata only — plays on tap (modal) */}
+      {video.videoUrl && (
+        <video
+          ref={videoRef}
+          src={video.videoUrl}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            isPlaying ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      )}
+
+      {/* Gradient overlay — keeps bottom text legible without hiding video content */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/90 via-[#0A1F44]/10 to-[#0A1F44]/40 pointer-events-none" />
+
+      {/* Top-left: category badge (gold) */}
+      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md">
+        <span className="text-[9px] sm:text-[10px] text-[#0A1F44] font-bold tracking-wide flex items-center gap-1">
+          <Icon className="size-2.5 sm:size-3" />
+          {video.category}
+        </span>
+      </div>
+
+      {/* Top-right: duration (mobile) / mute toggle (desktop hover) */}
+      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
+          <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
+        </div>
+        {/* Desktop hover: mute/unmute toggle (gold accent) */}
+        {variant === "desktop" && video.videoUrl && isPlaying && (
+          <button
+            onClick={toggleMute}
+            className="size-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-[#C9A961] hover:text-[#0A1F44] text-white transition-colors"
+            aria-label={isMuted ? "Unmute video" : "Mute video"}
+            title={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+          </button>
+        )}
+      </div>
+
+      {/* Center: play button overlay (mobile + desktop-not-playing) */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="size-12 sm:size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
+            <Play className="size-5 sm:size-6 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
+          </div>
+        </div>
+      )}
+
+      {/* Bottom: title + advisor (kept low to avoid covering video center) */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+        <h3 className="text-white text-xs sm:text-sm font-semibold leading-snug line-clamp-2 mb-2 drop-shadow-md">
+          {video.title}
+        </h3>
+        <div className="flex items-center gap-2">
+          {/* Agent avatar (initials on gold disc) */}
+          <div className="size-6 sm:size-7 rounded-full bg-gradient-to-br from-[#C9A961] to-[#A68A3F] flex items-center justify-center text-[#0A1F44] text-[10px] sm:text-xs font-bold flex-shrink-0 ring-2 ring-white/20">
+            {video.advisor?.charAt(0) || "R"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] sm:text-xs text-white font-medium truncate leading-tight">
+              {video.advisor}
+            </p>
+            {video.role && (
+              <p className="text-[9px] sm:text-[10px] text-white/60 truncate leading-tight mt-0.5">
+                {video.role}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop-only: subtle "hover to play" hint that fades on hover */}
+      {variant === "desktop" && video.videoUrl && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
+          <span className="text-[10px] text-white/70 bg-[#0A1F44]/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            Hover to play
+          </span>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
