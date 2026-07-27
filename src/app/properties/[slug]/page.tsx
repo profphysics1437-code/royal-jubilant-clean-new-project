@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { LandingPageLeadForm } from "@/components/site/LandingPageLeadForm";
 import { PropertyCard } from "@/components/site/PropertyCard";
@@ -50,6 +51,139 @@ function statusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+/**
+ * Build a professional pre-filled WhatsApp enquiry message for a property.
+ *
+ * Includes (only when available — never shows undefined/null):
+ *   - Agent name (greeting)
+ *   - Property title
+ *   - Property reference
+ *   - Status (For Rent / For Sale / Off-Plan / Commercial)
+ *   - Location (community + emirate if available)
+ *   - Price (formatted with rent frequency)
+ *   - Current property URL (canonical link)
+ *   - Royal Jubilant branding + polite closing
+ *
+ * Used by BOTH WhatsApp buttons on the Property Detail Page:
+ *   1. Sticky sidebar (desktop)
+ *   2. Mobile sticky bottom contact bar
+ *
+ * The message is encoded with encodeURIComponent — emojis, spaces, line
+ * breaks (\n), and special characters are all handled correctly for
+ * wa.me deep links.
+ */
+function buildWhatsAppEnquiryMessage(opts: {
+  agentName?: string | null;
+  propertyTitle: string;
+  propertyReference: string;
+  status: string;            // raw status: sale | rent | commercial | off-plan
+  community?: string | null;
+  emirate?: string | null;
+  price: number;
+  rentFrequency?: string | null;
+  propertyUrl: string;       // canonical URL of the property detail page
+}): string {
+  const greeting = opts.agentName
+    ? `Hello ${opts.agentName},`
+    : `Hello,`;
+
+  const lines: string[] = [
+    greeting,
+    ``,
+    `I am interested in your property listed on Royal Jubilant.`,
+  ];
+
+  // 🏡 Property (title) — always present (required field in schema)
+  if (opts.propertyTitle) {
+    lines.push(``, `🏡 Property`, opts.propertyTitle);
+  }
+
+  // 🆔 Reference (always present — schema requires it)
+  if (opts.propertyReference) {
+    lines.push(``, `🆔 Reference`, opts.propertyReference);
+  }
+
+  // 🏷 Category (status label)
+  const cat = statusLabel(opts.status);
+  if (cat) {
+    lines.push(``, `🏷 Category`, cat);
+  }
+
+  // 📍 Location (community + emirate, both optional)
+  const locationParts: string[] = [];
+  if (opts.community) locationParts.push(opts.community);
+  if (opts.emirate && opts.emirate !== opts.community) {
+    locationParts.push(opts.emirate);
+  }
+  if (locationParts.length > 0) {
+    lines.push(``, `📍 Location`, locationParts.join(`, `));
+  }
+
+  // 💰 Price (formatted with rent frequency suffix)
+  if (opts.price != null && !Number.isNaN(Number(opts.price))) {
+    const formatted = new Intl.NumberFormat("en-AE", {
+      style: "decimal",
+      maximumFractionDigits: 0,
+    }).format(Number(opts.price));
+    let priceStr = `AED ${formatted}`;
+    if (opts.rentFrequency === "year") priceStr += ` / Year`;
+    else if (opts.rentFrequency === "month") priceStr += ` / Month`;
+    lines.push(``, `💰 Price`, priceStr);
+  }
+
+  // 🔗 Property Link (canonical URL of this detail page)
+  if (opts.propertyUrl) {
+    lines.push(``, `🔗 Property Link`, opts.propertyUrl);
+  }
+
+  // Closing
+  lines.push(
+    ``,
+    `Could you please share more details about this property?`,
+    ``,
+    `Thank you.`
+  );
+
+  return lines.join(`\n`);
+}
+
+/**
+ * Build the full WhatsApp deep-link URL for a property enquiry.
+ * Returns null if the agent has no valid WhatsApp number (so callers
+ * can hide the button instead of rendering a broken link).
+ *
+ * Phone normalization: strips all non-digit characters from the agent's
+ * whatsapp field (handles "+971 52 494 2329", "971524942329", etc.).
+ */
+function buildWhatsAppEnquiryUrl(opts: {
+  whatsapp?: string | null;
+  agentName?: string | null;
+  propertyTitle: string;
+  propertyReference: string;
+  status: string;
+  community?: string | null;
+  emirate?: string | null;
+  price: number;
+  rentFrequency?: string | null;
+  propertyUrl: string;
+}): string | null {
+  if (!opts.whatsapp) return null;
+  const digits = opts.whatsapp.replace(/\D/g, "");
+  if (!digits) return null;
+  const message = buildWhatsAppEnquiryMessage({
+    agentName: opts.agentName,
+    propertyTitle: opts.propertyTitle,
+    propertyReference: opts.propertyReference,
+    status: opts.status,
+    community: opts.community,
+    emirate: opts.emirate,
+    price: opts.price,
+    rentFrequency: opts.rentFrequency,
+    propertyUrl: opts.propertyUrl,
+  });
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
 // ---------- metadata -------------------------------------------------------
@@ -211,6 +345,35 @@ export default async function PropertyDetailPage({
       .filter((m) => m.community === property.community && m.id !== property.id)
       .slice(0, 3);
   }
+
+  // Canonical property URL — used in the WhatsApp enquiry message so the
+  // receiving agent has a one-tap link back to the exact listing.
+  // Built from request headers since this is a server component.
+  const headersList = await headers();
+  const host = headersList.get("host") || "www.royaljubilant.com";
+  const protocol = headersList.get("x-forwarded-proto") || "https";
+  const propertyUrl = `${protocol}://${host}/properties/${encodeURIComponent(
+    property.slug || property.reference || property.id
+  )}`;
+
+  // Pre-compute the WhatsApp enquiry URL once — shared by the sidebar
+  // button (desktop) and the mobile sticky bottom bar button. Returns
+  // null if the agent has no valid WhatsApp number; callers hide the
+  // button in that case so no broken link is ever rendered.
+  const whatsappEnquiryUrl = agent
+    ? buildWhatsAppEnquiryUrl({
+        whatsapp: agent.whatsapp,
+        agentName: agent.name,
+        propertyTitle: property.title,
+        propertyReference: property.reference,
+        status: property.status,
+        community: property.community,
+        emirate: (property as any).emirate,
+        price: property.price,
+        rentFrequency: property.rentFrequency,
+        propertyUrl,
+      })
+    : null;
 
   return (
     <div className="min-h-screen bg-white pb-20 lg:pb-0">
@@ -431,19 +594,16 @@ export default async function PropertyDetailPage({
                 </div>
               </div>
 
-              {/* Contact buttons — premium split layout, thumb-friendly */}
+              {/* Contact buttons — premium split layout, thumb-friendly.
+                  Uses the pre-computed whatsappEnquiryUrl (built once at
+                  page top) so the same professional pre-filled message is
+                  shared by both this sidebar button and the mobile sticky
+                  bottom bar button below. */}
               {(() => {
                 const telUrl = agent.phone
                   ? `tel:${agent.phone.replace(/\s/g, "")}`
                   : null;
-                const waDigits = agent.whatsapp
-                  ? agent.whatsapp.replace(/\D/g, "")
-                  : "";
-                const waUrl = waDigits
-                  ? `https://wa.me/${waDigits}?text=${encodeURIComponent(
-                      `Hello ${agent.name}, I'm interested in your property "${property.title}" (Ref: ${property.reference}) on Royal Jubilant. Could you share more details?`
-                    )}`
-                  : null;
+                const waUrl = whatsappEnquiryUrl;
                 const mailUrl = agent.email
                   ? `mailto:${agent.email}?subject=${encodeURIComponent(
                       `Enquiry: ${property.title} (Ref: ${property.reference})`
@@ -684,14 +844,9 @@ export default async function PropertyDetailPage({
                   <span className="hidden sm:inline">Call</span>
                 </a>
               )}
-              {agent.whatsapp && (
+              {whatsappEnquiryUrl && (
                 <a
-                  href={`https://wa.me/${agent.whatsapp.replace(
-                    /\D/g,
-                    ""
-                  )}?text=${encodeURIComponent(
-                    `Hello ${agent.name}, I'm interested in your property "${property.title}" (Ref: ${property.reference}) on Royal Jubilant. Could you share more details?`
-                  )}`}
+                  href={whatsappEnquiryUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center gap-1 h-10 px-3 rounded-lg bg-[#25D366] hover:bg-[#1FB855] text-white text-xs font-semibold transition-colors"
