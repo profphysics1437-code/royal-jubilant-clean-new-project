@@ -158,7 +158,7 @@ export function ExploreProperty() {
 
       {/* Bottom: stats bar — navy background, contained width, animated numbers */}
       <div className="bg-navy-gradient-diagonal py-7 lg:py-9">
-        <div className="max-w-4xl mx-auto px-4 lg:px-6">
+        <div className="max-w-4xl mx-auto px-4 lg:px-6 min-w-0">
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-x-8 lg:gap-x-12 gap-y-3">
             {stats.map((stat, i) => (
               <motion.div

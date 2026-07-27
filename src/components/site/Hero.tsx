@@ -64,10 +64,10 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
       </div>
 
-      <div className="relative z-10 h-full flex flex-col">
+      <div className="relative z-10 h-full flex flex-col min-w-0">
         <div className="flex-1 flex items-center pt-24 lg:pt-32">
           <div className="container mx-auto px-4 lg:px-6 w-full">
-            <div className="max-w-4xl">
+            <div className="max-w-4xl min-w-0">
               <div className="flex items-center gap-2 mb-6">
                 {slides.map((_, i) => (
                   <button key={i} onClick={() => setCurrentSlide(i)} className={`h-0.5 rounded-full transition-all duration-700 ${i === currentSlide ? "w-12 bg-[#C9A961]" : "w-6 bg-white/30 hover:bg-white/50"}`} aria-label={`Slide ${i + 1}`} />
@@ -90,7 +90,7 @@ export function Hero() {
         {/* SEARCH BAR — Solid white bar, 3 sections: RENT | Community | SEARCH */}
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }} className="pb-6 lg:pb-8">
           <div className="container mx-auto px-4 lg:px-6">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto min-w-0">
               {/* Main search bar — single solid white row */}
               <div className="flex flex-col md:flex-row items-stretch bg-white rounded-xl shadow-2xl overflow-hidden">
                 {/* Section 1: RENT/BUY dropdown (navy) */}
