@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Heart,
@@ -11,10 +12,15 @@ import {
   Star,
   Crown,
   ArrowRight,
+  Download,
+  Share2,
+  Loader2,
 } from "lucide-react";
 import { Property, formatPrice } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
+import { generatePropertyPDF } from "@/lib/generatePropertyPDF";
+import { toast } from "sonner";
 
 interface Props {
   property: Property;
@@ -41,6 +47,82 @@ export function PropertyCard({ property, index = 0 }: Props) {
   const toggleSaved = useStore((s) => s.toggleSavedProperty);
   const isSaved = useStore((s) => s.isSaved(property.id));
   const href = getPropertyHref(property);
+
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  // ── Icon button handlers (all stopPropagation so they don't trigger nav) ──
+
+  const handleFavourite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleSaved(property.id);
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const shareUrl = `${window.location.origin}${href}`;
+    const shareText = `Check out this property: ${property.title} — ${formatPrice(
+      property.price,
+      property.rentFrequency
+    )} in ${property.community}`;
+
+    // Try native Web Share API first (mobile + supported desktop)
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: property.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        return; // success — don't fall through
+      } catch (err: any) {
+        // User cancelled — don't show error
+        if (err?.name === "AbortError") return;
+        // Other error — fall through to clipboard fallback
+      }
+    }
+    // Fallback: copy link to clipboard
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Couldn't share — please copy the URL manually");
+    }
+  };
+
+  const handleDownloadPDF = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      await generatePropertyPDF({
+        reference: property.reference,
+        title: property.title,
+        price: property.price,
+        status: property.status,
+        rentFrequency: property.rentFrequency,
+        type: property.type,
+        community: property.community,
+        subCommunity: property.subCommunity,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        area: property.area,
+        areaUnit: (property as any).areaUnit,
+        parking: (property as any).parking ?? 0,
+        description: property.description,
+        reraNumber: (property as any).reraNumber,
+        images: property.images,
+      });
+      toast.success("Property brochure downloaded");
+    } catch (err: any) {
+      console.error("[PropertyCard PDF]", err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <motion.article
@@ -89,24 +171,54 @@ export function PropertyCard({ property, index = 0 }: Props) {
           )}
         </div>
 
-        {/* Top-right: favorite heart */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            toggleSaved(property.id);
-          }}
-          aria-label={isSaved ? "Remove from saved" : "Save property"}
-          className="absolute top-3 right-3 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md z-10"
-        >
-          <Heart
-            className={`size-4 transition-all ${
-              isSaved
-                ? "fill-[#C9A961] text-[#A68A3F] scale-110"
-                : "text-[#0A1F44]"
-            }`}
-          />
-        </button>
+        {/* Top-right: 3 ICON-ONLY action buttons (vertical stack)
+            - ❤️ Favourite (heart)
+            - ⬇️ Download PDF
+            - ↗️ Share
+            All have title tooltips + aria-labels. No text labels.
+            stopPropagation prevents navigation when clicking icons. */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+          {/* Favourite */}
+          <button
+            onClick={handleFavourite}
+            aria-label={isSaved ? "Remove from saved" : "Save property"}
+            title={isSaved ? "Remove from saved" : "Save property"}
+            className="size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
+          >
+            <Heart
+              className={`size-4 transition-all ${
+                isSaved
+                  ? "fill-[#C9A961] text-[#A68A3F] scale-110"
+                  : "text-[#0A1F44]"
+              }`}
+            />
+          </button>
+
+          {/* Download PDF */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={pdfLoading}
+            aria-label="Download property brochure as PDF"
+            title="Download PDF"
+            className="size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {pdfLoading ? (
+              <Loader2 className="size-4 text-[#0A1F44] animate-spin" />
+            ) : (
+              <Download className="size-4 text-[#0A1F44]" />
+            )}
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={handleShare}
+            aria-label="Share this property"
+            title="Share"
+            className="size-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
+          >
+            <Share2 className="size-4 text-[#0A1F44]" />
+          </button>
+        </div>
       </div>
 
       {/* ───────────────────────────────────────────────────────────────

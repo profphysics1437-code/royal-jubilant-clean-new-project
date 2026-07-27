@@ -4,9 +4,6 @@ import Link from "next/link";
 import { LandingPageLeadForm } from "@/components/site/LandingPageLeadForm";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { PropertyGallery } from "@/components/site/PropertyGallery";
-import { ShareButton } from "@/components/site/ShareButton";
-import { DownloadPDFButton } from "@/components/site/DownloadPDFButton";
-import { FavouriteButton } from "@/components/site/FavouriteButton";
 import { properties as fallbackProperties, formatPrice, getAgentById } from "@/lib/data";
 import {
   ArrowLeft,
@@ -22,8 +19,6 @@ import {
   Check,
   Building2,
   Calendar,
-  Home,
-  Tag,
 } from "lucide-react";
 
 // Always render fresh — never cache at build time (DB data changes often)
@@ -239,10 +234,10 @@ export default async function PropertyDetailPage({
         </div>
       </header>
 
-      {/* Gallery — premium 3-photo collage with full-screen lightbox.
-          Adapts for 1, 2, 3, 4+ images. Click any image to open the
-          gallery at that index. Mobile-first: no horizontal scroll. */}
-      <section className="container mx-auto px-4 lg:px-6 pt-4 sm:pt-6">
+      {/* Gallery — dynamic, premium Royal Jubilant design with thumbnails,
+          lightbox, swipe, keyboard nav. Handles empty/broken/duplicate
+          images gracefully. Hides controls when only 1 image exists. */}
+      <section className="container mx-auto px-4 lg:px-6 pt-6">
         <PropertyGallery
           title={property.title}
           images={images}
@@ -250,97 +245,29 @@ export default async function PropertyDetailPage({
         />
       </section>
 
-      {/* Title + price + action bar */}
-      <section className="container mx-auto px-4 lg:px-6 pt-6">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          {/* Left: title + location + price */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1 rounded-full tracking-wide">
-                <Tag className="size-3" />
-                {statusLabel(property.status)}
-              </span>
-              {property.type && (
-                <span className="inline-flex items-center gap-1 bg-[#F4F5F7] text-[#0A1F44] text-[11px] font-semibold px-3 py-1 rounded-full tracking-wide">
-                  <Home className="size-3 text-[#9CA3AF]" />
-                  {property.type}
-                </span>
-              )}
-              {property.reraNumber && (
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-[#A68A3F]">
-                  <ShieldCheck className="size-3" />
-                  RERA {property.reraNumber}
-                </span>
-              )}
-            </div>
-            <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-medium text-[#0A1F44] leading-tight">
+      {/* Main content */}
+      <section className="container mx-auto px-4 lg:px-6 py-8 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
+        {/* Left column — title, specs, description */}
+        <div className="space-y-8">
+          <div>
+            <h1 className="font-serif text-3xl md:text-4xl font-medium text-[#0A1F44] leading-tight">
               {property.title}
             </h1>
             <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[#6B7280]">
-              <MapPin className="size-4 text-[#C9A961] flex-shrink-0" />
-              <span className="truncate">
-                {property.community}
-                {property.subCommunity ? ` · ${property.subCommunity}` : ""}
-              </span>
+              <MapPin className="size-4 text-[#9CA3AF]" />
+              {property.community}
+              {property.subCommunity ? ` · ${property.subCommunity}` : ""}
             </p>
-            <p className="mt-3 text-2xl sm:text-3xl font-bold text-[#0A1F44] font-serif">
+            <p className="mt-4 text-3xl font-bold text-[#0A1F44]">
               {formatPrice(property.price, property.rentFrequency)}
               {property.pricePerSqft && (
-                <span className="ml-2 text-xs font-normal text-[#9CA3AF] font-sans">
+                <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
                   · AED {property.pricePerSqft.toLocaleString()}/sqft
                 </span>
               )}
             </p>
           </div>
 
-          {/* Right: action bar (Favourite + Share + PDF) */}
-          <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap">
-            <FavouriteButton propertyId={property.id} size="md" />
-            <ShareButton
-              title={property.title}
-              description={property.description}
-              size="md"
-            />
-            <DownloadPDFButton
-              property={{
-                reference: property.reference,
-                title: property.title,
-                price: property.price,
-                status: property.status,
-                rentFrequency: property.rentFrequency,
-                type: property.type,
-                community: property.community,
-                subCommunity: property.subCommunity,
-                bedrooms: property.bedrooms,
-                bathrooms: property.bathrooms,
-                area: property.area,
-                areaUnit: property.areaUnit,
-                parking: property.parking,
-                description: property.description,
-                reraNumber: property.reraNumber,
-                images,
-                agent: agent
-                  ? {
-                      name: agent.name,
-                      title: agent.title || "Property Consultant",
-                      phone: agent.phone || "",
-                      whatsapp: agent.whatsapp,
-                      email: agent.email,
-                      photo: agent.photo,
-                    }
-                  : undefined,
-                location: { address: property.locationAddress },
-              }}
-              size="md"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Main content — 2-column on desktop, stacked on mobile */}
-      <section className="container mx-auto px-4 lg:px-6 py-8 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
-        {/* Left column — specs, description, features, facts */}
-        <div className="space-y-8">
           {/* Specs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-6 border-y border-[#E5E7EB]">
             <Spec

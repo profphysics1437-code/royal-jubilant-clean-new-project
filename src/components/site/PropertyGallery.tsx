@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Maximize2, Images } from "lucide-react";
 
@@ -16,27 +16,24 @@ interface Props {
 /**
  * Premium property image gallery for Royal Jubilant Real Estate.
  *
- * Layout: 3-photo collage at top (Dubizzle-style UX inspiration, our own
- * Royal Jubilant premium design).
- *   ┌──────────────────────┬───────────────┐
- *   │                      │   Photo 2     │
- *   │   Main Photo (1)     ├───────────────┤
- *   │                      │   Photo 3     │
- *   │                      │   +X Photos   │
- *   └──────────────────────┴───────────────┘
+ * Layout: 3-photo collage at top (1 large + 2 stacked). Click ANY image
+ * to open the full-screen lightbox starting at that index.
  *
- * Click ANY image → full-screen lightbox opens at that index.
+ * Adapts gracefully:
+ *   • 1 image  → full-width single hero
+ *   • 2 images → 50/50 split
+ *   • 3 images → 1 large + 2 stacked
+ *   • 4+ images → 1 large + 2 stacked + "+X Photos" overlay
  *
- * Features:
- *   • Adapts gracefully for 1, 2, 3, 4+ images
- *   • "+X Photos" overlay on third image when 4+ images exist
- *   • Smooth prev/next navigation (fade + slide transition)
- *   • Thumbnail strip inside lightbox (desktop)
- *   • Mobile swipe support (Framer Motion drag, 50px threshold)
- *   • Keyboard navigation: ← → (prev/next), Esc (close)
- *   • Image counter (e.g. "1 / 12")
- *   • Filters empty / null / duplicate URLs
- *   • Broken-image fallback (onError removes the broken URL)
+ * Lightbox features:
+ *   • Opens at the clicked image's index (not always 0)
+ *   • Smooth fade+scale transitions
+ *   • Prev/Next chevrons (gold on hover)
+ *   • Image counter "1 / N" (monospace)
+ *   • Bottom thumbnail strip (desktop)
+ *   • Mobile swipe (Framer Motion drag, 50px threshold)
+ *   • Keyboard nav: ArrowLeft/Right + Escape
+ *   • Body scroll lock while open
  *
  * Design: Royal Jubilant brand — Navy #0A1F44, Gold #C9A961, Silver #9CA3AF,
  * White. Mobile-first: no horizontal scroll, touch-friendly tap targets.
@@ -91,6 +88,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   const goNext = useCallback(() => goTo(activeIndex + 1), [goTo, activeIndex]);
   const goPrev = useCallback(() => goTo(activeIndex - 1), [goTo, activeIndex]);
 
+  // Open lightbox at a specific index — used by the collage click handlers
   const openLightbox = useCallback((idx: number) => {
     setActiveIndex(idx);
     setLightboxOpen(true);
@@ -113,12 +111,15 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   }, [lightboxOpen, goNext, goPrev]);
 
   // ── Broken-image handler ────────────────────────────────────────────────
-  const handleImageError = (idx: number) => {
-    setBrokenSet((prev) => {
-      const next = new Set(prev);
-      next.add(idx);
-      return next;
-    });
+  const handleImageError = (url: string) => {
+    const cleanIdx = cleanImages.indexOf(url);
+    if (cleanIdx >= 0) {
+      setBrokenSet((prev) => {
+        const next = new Set(prev);
+        next.add(cleanIdx);
+        return next;
+      });
+    }
   };
 
   // ── Empty state ─────────────────────────────────────────────────────────
@@ -134,16 +135,13 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   }
 
   // ── Helper: render a single image with error fallback ──────────────────
-  const renderImage = (url: string, idx: number, alt: string) => (
+  const renderImage = (url: string, alt: string) => (
     <img
       src={url}
       alt={alt}
       loading="lazy"
       className="w-full h-full object-cover"
-      onError={() => {
-        const cleanIdx = cleanImages.indexOf(url);
-        if (cleanIdx >= 0) handleImageError(cleanIdx);
-      }}
+      onError={() => handleImageError(url)}
       draggable={false}
     />
   );
@@ -156,54 +154,54 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
     if (visibleTotal === 1) {
       return (
         <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#F4F5F7] group cursor-zoom-in">
-          {renderImage(visibleImages[0], 0, `${title} — image 1 of 1`)}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
-          {statusLabel && (
-            <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
-              {statusLabel}
-            </span>
-          )}
           <button
             onClick={() => openLightbox(0)}
             aria-label="Open full-screen gallery"
-            className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
+            className="block w-full h-full"
           >
-            <Maximize2 className="size-4 text-[#0A1F44]" />
+            {renderImage(visibleImages[0], `${title} — image 1 of 1`)}
           </button>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
+          {statusLabel && (
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md pointer-events-none">
+              {statusLabel}
+            </span>
+          )}
+          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none">
+            <Maximize2 className="size-4 text-[#0A1F44]" />
+          </div>
         </div>
       );
     }
 
-    // ── 2 images: 50/50 split (left + right) ──
+    // ── 2 images: 50/50 split ──
     if (visibleTotal === 2) {
       return (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden">
-          {/* Left: image 1 */}
           <button
             onClick={() => openLightbox(0)}
             aria-label="Open gallery — image 1"
             className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
           >
-            {renderImage(visibleImages[0], 0, `${title} — image 1 of 2`)}
+            {renderImage(visibleImages[0], `${title} — image 1 of 2`)}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
             {statusLabel && (
-              <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
+              <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md pointer-events-none">
                 {statusLabel}
               </span>
             )}
-            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none group-hover:scale-110 transition-transform">
               <Maximize2 className="size-4 text-[#0A1F44]" />
             </div>
           </button>
-          {/* Right: image 2 */}
           <button
             onClick={() => openLightbox(1)}
             aria-label="Open gallery — image 2"
             className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
           >
-            {renderImage(visibleImages[1], 1, `${title} — image 2 of 2`)}
+            {renderImage(visibleImages[1], `${title} — image 2 of 2`)}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none group-hover:scale-110 transition-transform">
               <Maximize2 className="size-4 text-[#0A1F44]" />
             </div>
           </button>
@@ -211,48 +209,47 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
       );
     }
 
-    // ── 3+ images: 1 large left + 2 stacked right (Dubizzle-style UX) ──
-    // Mobile: same layout but tighter — keeps the visual signature.
+    // ── 3+ images: 1 large left + 2 stacked right ──
     const hasMoreThanThree = visibleTotal > 3;
     const extraCount = visibleTotal - 3;
 
     return (
       <div className="grid grid-cols-4 grid-rows-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden aspect-[16/10] sm:aspect-[16/9]">
-        {/* Left: image 1 (spans 2 rows, takes 2/3 width on sm+) */}
+        {/* Main image (left, spans 2 rows) */}
         <button
           onClick={() => openLightbox(0)}
           aria-label="Open gallery — main image"
           className="relative col-span-4 sm:col-span-3 row-span-2 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
-          {renderImage(visibleImages[0], 0, `${title} — image 1 of ${visibleTotal}`)}
+          {renderImage(visibleImages[0], `${title} — image 1 of ${visibleTotal}`)}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/35 via-transparent to-transparent pointer-events-none" />
           {statusLabel && (
-            <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md pointer-events-none">
               {statusLabel}
             </span>
           )}
-          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md pointer-events-none group-hover:scale-110 transition-transform">
             <Maximize2 className="size-4 text-[#0A1F44]" />
           </div>
-          {/* Mobile hint: counter badge bottom-left of main image */}
-          <span className="absolute bottom-4 left-4 sm:hidden inline-flex items-center gap-1 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono">
+          {/* Mobile counter badge */}
+          <span className="sm:hidden absolute bottom-4 left-4 inline-flex items-center gap-1 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono pointer-events-none">
             <Images className="size-3" /> {visibleTotal} photos
           </span>
         </button>
 
-        {/* Right-top: image 2 (hidden on mobile to keep layout clean) */}
+        {/* Image 2 (top-right) — hidden on mobile to keep layout clean */}
         <button
           onClick={() => openLightbox(1)}
           aria-label="Open gallery — image 2"
           className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
-          {renderImage(visibleImages[1], 1, `${title} — image 2 of ${visibleTotal}`)}
+          {renderImage(visibleImages[1], `${title} — image 2 of ${visibleTotal}`)}
           <div className="absolute inset-0 bg-[#0A1F44]/0 group-hover:bg-[#0A1F44]/15 transition-colors pointer-events-none" />
         </button>
 
-        {/* Right-bottom: image 3 (with +X Photos overlay if 4+ images) */}
+        {/* Image 3 (bottom-right) with +X Photos overlay if 4+ images */}
         <button
-          onClick={() => openLightbox(hasMoreThanThree ? 3 : 2)}
+          onClick={() => openLightbox(2)}
           aria-label={
             hasMoreThanThree
               ? `Open gallery — view all ${visibleTotal} photos`
@@ -260,23 +257,19 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
           }
           className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
         >
-          {renderImage(
-            visibleImages[2],
-            2,
-            `${title} — image 3 of ${visibleTotal}`
-          )}
+          {renderImage(visibleImages[2], `${title} — image 3 of ${visibleTotal}`)}
           {/* Dark overlay so the "+X Photos" text is legible */}
-          <div className="absolute inset-0 bg-[#0A1F44]/0 group-hover:bg-[#0A1F44]/30 transition-colors pointer-events-none flex items-center justify-center">
-            {hasMoreThanThree ? (
+          <div className="absolute inset-0 bg-[#0A1F44]/20 group-hover:bg-[#0A1F44]/40 transition-colors pointer-events-none flex items-center justify-center">
+            {hasMoreThanThree && (
               <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-[#0A1F44] text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5">
                 <Images className="size-3.5 text-[#C9A961]" />
                 View all {visibleTotal}
               </span>
-            ) : null}
+            )}
           </div>
           {/* Persistent "+X Photos" badge (always visible, bottom-right) */}
           {hasMoreThanThree && (
-            <span className="absolute bottom-2 right-2 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md inline-flex items-center gap-1 font-mono">
+            <span className="absolute bottom-2 right-2 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md inline-flex items-center gap-1 font-mono pointer-events-none">
               +{extraCount}
             </span>
           )}
@@ -357,7 +350,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               </AnimatePresence>
             </motion.div>
 
-            {/* Prev / Next — lightbox version (gold accent on hover) */}
+            {/* Prev / Next chevrons (gold on hover) */}
             {hasMultiple && (
               <>
                 <button
@@ -383,7 +376,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               </>
             )}
 
-            {/* Bottom: thumbnail strip in lightbox (desktop only) */}
+            {/* Bottom thumbnail strip (desktop only) */}
             {hasMultiple && (
               <div className="hidden sm:flex absolute bottom-0 inset-x-0 p-6 gap-2 overflow-x-auto justify-start max-w-full">
                 {visibleImages.map((img, idx) => (
