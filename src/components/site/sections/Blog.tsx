@@ -241,14 +241,25 @@ export function VideoSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ReelsCard — video card with frame matching PropertyCard exactly.
-//   - Outer card frame: bg-white rounded-2xl border shadow + hover lift
-//     (identical to PropertyCard.tsx so video cards visually synchronize
-//     with the Latest Listings cards in the same scroll viewport)
-//   - Video frame inside the card: aspect-[9/16] (vertical Reels-style)
-//     kept inside the card so the overall card dimensions match the
-//     Latest Listings card width / radius / border / gap / grid columns
-//   - Body section under the video: title + advisor (kept compact)
+// ReelsCard — video card with PIXEL-PERFECT height match to PropertyCard.
+//
+// Structure mirrors PropertyCard.tsx EXACTLY:
+//   1. Video/image area: aspect-[4/3]  (same as PropertyCard's image area)
+//   2. Body section: p-4 sm:p-5 flex-1 flex flex-col gap-3  (same padding,
+//      same gap, same content element heights as PropertyCard body)
+//
+// The body section uses `invisible` (visibility:hidden) so it occupies
+// the SAME pixel height as the PropertyCard body (price + title +
+// location + specs + button) — guaranteeing pixel-perfect total card
+// height synchronization with Latest Listings cards.
+//
+// The video title + agent name are positioned as a BOTTOM OVERLAY on
+// the video itself (absolute positioned at the bottom of the video area
+// with a subtle dark gradient for readability). No separate title area
+// is shown below the video.
+//
+// The video source keeps its 9:16 aspect ratio and uses object-cover
+// to fill the 4:3 container without letterboxing.
 // ═══════════════════════════════════════════════════════════════════════
 
 interface ReelsCardProps {
@@ -264,8 +275,6 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Autoplay (muted, loop) when the card is hovered. Pause on mouse leave.
-  // Touch devices show the thumbnail + play button; tapping opens the modal.
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !video.videoUrl) return;
@@ -300,29 +309,26 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      // Card frame — IDENTICAL to PropertyCard.tsx so video cards visually
-      // synchronize with the Latest Listings cards (same width, height
-      // behavior, radius, border, shadow, hover lift).
+      // Card frame — IDENTICAL to PropertyCard.tsx (pixel-perfect match).
       className="group relative bg-white rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
     >
-      {/* ───────────────────────────────────────────────────────────────
-          VIDEO SECTION — 9:16 vertical aspect ratio INSIDE the card.
-          Same border-radius inherits from card (rounded-2xl overflow-hidden
-          on parent). Video element + thumbnail both absolute-fill this
-          9:16 container with object-cover so no letterboxing.
-         ─────────────────────────────────────────────────────────────── */}
-      <div className="relative aspect-[9/16] overflow-hidden bg-[#0A1F44]">
-        {/* Thumbnail — fades out when video is playing on hover */}
+      {/* ═══════════════════════════════════════════════════════════════
+          VIDEO AREA — aspect-[4/3] (same as PropertyCard image area).
+          The 9:16 video source uses object-cover to fill this 4:3
+          container. Title + agent are overlaid at the bottom.
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A1F44]">
+        {/* Thumbnail — fades out when video plays on hover */}
         <img
           src={video.thumbnail}
           alt={video.title}
           loading="lazy"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
+            isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.06]"
           }`}
         />
 
-        {/* Video element — muted, loop, playsInline. Plays on hover (desktop). */}
+        {/* Video element — 9:16 source, object-cover fills 4:3 container */}
         {video.videoUrl && (
           <video
             ref={videoRef}
@@ -337,11 +343,11 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
           />
         )}
 
-        {/* Gradient overlay — keeps overlaid badges/text legible */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/85 via-[#0A1F44]/10 to-[#0A1F44]/30 pointer-events-none" />
+        {/* Subtle dark gradient at bottom for title readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/90 via-[#0A1F44]/15 to-[#0A1F44]/20 pointer-events-none" />
 
         {/* Top-left: category badge (gold) */}
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md">
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md z-10">
           <span className="text-[9px] sm:text-[10px] text-[#0A1F44] font-bold tracking-wide flex items-center gap-1">
             <Icon className="size-2.5 sm:size-3" />
             {video.category}
@@ -349,7 +355,7 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
         </div>
 
         {/* Top-right: duration pill + (hover) mute toggle */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
           <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
             <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
           </div>
@@ -373,34 +379,66 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
             </div>
           </div>
         )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            BOTTOM OVERLAY — title + agent name ON the video itself.
+            Positioned at the bottom of the video area with the dark
+            gradient above for readability. No separate body section.
+            ═══════════════════════════════════════════════════════════════ */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-10">
+          {/* Title — elegant, 2-line clamp, white with drop shadow */}
+          <h3 className="text-white text-xs sm:text-sm font-semibold leading-snug line-clamp-2 mb-1.5 drop-shadow-md">
+            {video.title}
+          </h3>
+          {/* Agent row — avatar (initials on gold disc) + name */}
+          <div className="flex items-center gap-1.5">
+            <div className="size-5 sm:size-6 rounded-full bg-gradient-to-br from-[#C9A961] to-[#A68A3F] flex items-center justify-center text-[#0A1F44] text-[9px] sm:text-[10px] font-bold flex-shrink-0 ring-1 ring-white/30">
+              {video.advisor?.charAt(0) || "R"}
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-white/90 font-medium truncate drop-shadow-sm">
+              {video.advisor}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* ───────────────────────────────────────────────────────────────
-          BODY SECTION — mirrors PropertyCard's body padding + layout
-          (p-4 sm:p-5 flex-1 flex flex-col gap-3) so the body of the
-          video card is visually consistent with the Latest Listings card.
-         ─────────────────────────────────────────────────────────────── */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-2.5">
-        {/* Title */}
-        <h3 className="text-sm sm:text-base font-semibold text-[#0A1F44] line-clamp-2 group-hover:text-[#A68A3F] transition-colors leading-snug">
-          {video.title}
-        </h3>
-
-        {/* Advisor row — avatar (initials on gold disc) + name + role */}
-        <div className="flex items-center gap-2 pt-2 border-t border-[#F4F5F7]">
-          <div className="size-7 sm:size-8 rounded-full bg-gradient-to-br from-[#C9A961] to-[#A68A3F] flex items-center justify-center text-[#0A1F44] text-[10px] sm:text-xs font-bold flex-shrink-0 ring-2 ring-white/40">
-            {video.advisor?.charAt(0) || "R"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] sm:text-xs text-[#0A1F44] font-medium truncate leading-tight">
-              {video.advisor}
-            </p>
-            {video.role && (
-              <p className="text-[10px] text-[#6B7280] truncate leading-tight mt-0.5">
-                {video.role}
-              </p>
-            )}
-          </div>
+      {/* ═══════════════════════════════════════════════════════════════
+          HIDDEN BODY SECTION — pixel-perfect height matcher.
+          Uses `invisible` (visibility:hidden → still occupies space)
+          so this card has the EXACT SAME total height as the Latest
+          Listings PropertyCard. The body structure mirrors
+          PropertyCard.tsx identically:
+            - p-4 sm:p-5  (same padding)
+            - flex flex-col gap-3  (same gap)
+            - Price-sized text  (text-[22px] sm:text-2xl font-bold)
+            - Title-sized text  (text-sm sm:text-base font-semibold)
+            - Location-sized text  (text-xs)
+            - Specs row  (pt-3 border-t text-xs)
+            - Button  (h-10 sm:h-11 rounded-lg)
+          All content is invisible — it exists ONLY to guarantee the
+          card height matches the Latest Listings card pixel-for-pixel.
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3 invisible" aria-hidden="true">
+        {/* Price-sized spacer */}
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[22px] sm:text-2xl font-bold text-[#0A1F44] leading-none font-serif">AED 0</span>
+          <span className="text-[11px] text-[#9CA3AF] whitespace-nowrap font-medium">AED 0/sqft</span>
+        </div>
+        {/* Title-sized spacer */}
+        <h3 className="text-sm sm:text-base font-semibold text-[#0A1F44] line-clamp-1 leading-snug">Property title spacer</h3>
+        {/* Location-sized spacer */}
+        <p className="text-xs flex items-center gap-1.5 text-[#6B7280]">
+          <span className="truncate">Community spacer</span>
+        </p>
+        {/* Specs-sized spacer */}
+        <div className="flex items-center gap-3 sm:gap-4 pt-3 text-[#0A1F44] text-xs border-t border-[#F4F5F7]">
+          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">Beds</span></span>
+          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">Baths</span></span>
+          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">sqft</span></span>
+        </div>
+        {/* Button-sized spacer */}
+        <div className="mt-auto inline-flex items-center justify-center gap-1.5 w-full h-10 sm:h-11 rounded-lg bg-[#0A1F44] text-white text-xs sm:text-sm font-semibold">
+          View Property
         </div>
       </div>
     </motion.div>
