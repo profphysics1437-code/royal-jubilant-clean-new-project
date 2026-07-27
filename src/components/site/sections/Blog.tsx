@@ -151,16 +151,18 @@ export function VideoSection() {
         </div>
 
         {/* ════════════════════════════════════════════════════════════════
-            Unified grid — matches "Latest Listings" card layout EXACTLY.
-            Same grid columns, gap, border-radius, and overall dimensions
-            as the Latest Listings section (FeaturedProperties.tsx):
+            Video grid — STRICTLY matches "Latest Listings" card layout.
+            Same grid columns, gap, border-radius, border, shadow, hover
+            behavior, body padding, and card frame as Latest Listings
+            (FeaturedProperties.tsx → PropertyCard.tsx):
               grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6
+            Exactly 4 cards in a single row on desktop (no second row).
             The video frame inside each card keeps the 9:16 vertical
-            aspect ratio, but the CARD itself matches Latest Listings.
-            Works identically on mobile, tablet, and desktop.
+            aspect ratio. Title + agent name live in a clean bottom body
+            section (same pattern as PropertyCard body).
             ════════════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mt-12 min-w-0">
-          {videos.slice(0, 8).map((video, i) => (
+          {videos.slice(0, 4).map((video, i) => (
             <ReelsCard
               key={`v-${video.title}-${i}`}
               video={video}
