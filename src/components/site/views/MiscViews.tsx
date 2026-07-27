@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useState, useRef } from "react";
-import { ArrowLeft, MapPin, Star, TrendingUp, ArrowRight, Building2, ShieldCheck, Tag, Award } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { ArrowLeft, MapPin, Star, TrendingUp, ArrowRight, Building2, ShieldCheck, Tag, Award, X, Play } from "lucide-react";
 import {
   communities as fallbackCommunities,
   developers as fallbackDevelopers,
@@ -801,6 +802,14 @@ export function SavedView() {
 
 export function AdviceView() {
   const { setActiveView } = useStore();
+  const [playingVideo, setPlayingVideo] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Fetch videos from DB; fall back to hardcoded array while loading
+  const { data } = useApi<{ videos: any[] }>("/api/public/videos", { videos: advisorVideosData });
+  const videos = data?.videos || advisorVideosData;
+
   return (
     <div className="min-h-screen bg-[#0A1F44]">
       <div className="bg-royal-gradient-diagonal text-white py-14 lg:py-16">
@@ -815,49 +824,95 @@ export function AdviceView() {
         </div>
       </div>
       <div className="container mx-auto px-4 lg:px-6 py-12 lg:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-          {advisorVideosData.map((video, i) => {
-            return (
-              <motion.div
-                key={video.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, delay: i * 0.06 }}
-                className="group relative aspect-[9/16] rounded-xl overflow-hidden cursor-pointer bg-[#1E3A6F]"
-              >
-                <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover zoom-img"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/95 via-[#0A1F44]/20 to-[#0A1F44]/40" />
-                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-[#C9A961]">
-                  <span className="text-[8px] text-[#0A1F44] font-bold tracking-wide">{video.category}</span>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 min-w-0">
+          {videos.map((video, i) => (
+            <motion.div
+              key={video.title}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5, delay: i * 0.06 }}
+              onClick={() => video.videoUrl && setPlayingVideo(video)}
+              className="group relative aspect-[9/16] rounded-xl overflow-hidden cursor-pointer bg-[#1E3A6F] min-w-0"
+            >
+              <img
+                src={video.thumbnail}
+                alt={video.title}
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover zoom-img"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/95 via-[#0A1F44]/20 to-[#0A1F44]/40" />
+              <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-[#C9A961]">
+                <span className="text-[8px] text-[#0A1F44] font-bold tracking-wide">{video.category}</span>
+              </div>
+              <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-[#0A1F44]/80 backdrop-blur-sm">
+                <span className="text-[8px] text-white font-medium">{video.duration}</span>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="size-10 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
+                  <Play className="size-4 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
                 </div>
-                <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-[#0A1F44]/80 backdrop-blur-sm">
-                  <span className="text-[8px] text-white font-medium">{video.duration}</span>
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="size-10 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
-                    <svg className="size-4 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <h3 className="text-white text-xs font-semibold leading-tight line-clamp-2 mb-1.5">{video.title}</h3>
+                <div className="flex items-center gap-1.5">
+                  <div className="size-4 rounded-full bg-[#C9A961] flex items-center justify-center text-[#0A1F44] text-[8px] font-bold flex-shrink-0">
+                    {video.advisor?.charAt(0) || "R"}
                   </div>
+                  <span className="text-[9px] text-white/60 truncate">{video.advisor}</span>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <h3 className="text-white text-xs font-semibold leading-tight line-clamp-2 mb-1.5">{video.title}</h3>
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-4 rounded-full bg-[#C9A961] flex items-center justify-center text-[#0A1F44] text-[8px] font-bold flex-shrink-0">
-                      {video.advisor.charAt(0)}
-                    </div>
-                    <span className="text-[9px] text-white/60 truncate">{video.advisor}</span>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
+
+      {/* Full-screen video modal — portaled to document.body */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {playingVideo && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPlayingVideo(null)}
+              className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+            >
+              <button
+                onClick={() => setPlayingVideo(null)}
+                className="absolute top-4 right-4 z-10 size-11 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center backdrop-blur-sm flex-shrink-0"
+                aria-label="Close video"
+              >
+                <X className="size-5 text-white" />
+              </button>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative bg-[#0A1F44] rounded-2xl overflow-hidden shadow-2xl w-full max-w-sm md:max-w-2xl max-h-[90vh] min-w-0 flex flex-col"
+              >
+                <div className="relative w-full aspect-[9/16] md:aspect-video bg-black max-h-[80vh] flex-shrink-0">
+                  <video
+                    autoPlay
+                    controls
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-contain"
+                  >
+                    <source src={playingVideo.videoUrl} type="video/mp4" />
+                  </video>
+                </div>
+                <div className="p-3 md:p-4 flex-shrink-0">
+                  <h3 className="font-serif text-sm md:text-base font-medium text-white truncate">{playingVideo.title}</h3>
+                  <p className="text-[10px] text-white/50 mt-0.5">{playingVideo.advisor} · {playingVideo.category}</p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
