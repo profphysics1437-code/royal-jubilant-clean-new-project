@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X, Maximize2, ZoomIn } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Maximize2, Images } from "lucide-react";
 
 interface Props {
   /** Property title — used for alt text on all images. */
@@ -16,21 +16,30 @@ interface Props {
 /**
  * Premium property image gallery for Royal Jubilant Real Estate.
  *
+ * Layout: 3-photo collage at top (Dubizzle-style UX inspiration, our own
+ * Royal Jubilant premium design).
+ *   ┌──────────────────────┬───────────────┐
+ *   │                      │   Photo 2     │
+ *   │   Main Photo (1)     ├───────────────┤
+ *   │                      │   Photo 3     │
+ *   │                      │   +X Photos   │
+ *   └──────────────────────┴───────────────┘
+ *
+ * Click ANY image → full-screen lightbox opens at that index.
+ *
  * Features:
- *   • Large main image, dynamic from Supabase
+ *   • Adapts gracefully for 1, 2, 3, 4+ images
+ *   • "+X Photos" overlay on third image when 4+ images exist
  *   • Smooth prev/next navigation (fade + slide transition)
- *   • Thumbnail strip below main image — click to jump
- *   • Full-screen lightbox (click main image or expand button)
- *   • Mobile swipe support (Framer Motion drag)
- *   • Keyboard navigation: ← → (prev/next), Esc (close lightbox)
+ *   • Thumbnail strip inside lightbox (desktop)
+ *   • Mobile swipe support (Framer Motion drag, 50px threshold)
+ *   • Keyboard navigation: ← → (prev/next), Esc (close)
  *   • Image counter (e.g. "1 / 12")
- *   • Auto-hide controls when only 1 image exists
  *   • Filters empty / null / duplicate URLs
- *   • Broken-image fallback (onError shows elegant placeholder)
+ *   • Broken-image fallback (onError removes the broken URL)
  *
  * Design: Royal Jubilant brand — Navy #0A1F44, Gold #C9A961, Silver #9CA3AF,
- * White. No Dubizzle/Bayut imitation — uses generous whitespace, subtle gold
- * accents on hover, and dark navy overlays for the lightbox.
+ * White. Mobile-first: no horizontal scroll, touch-friendly tap targets.
  */
 export function PropertyGallery({ title, images, statusLabel }: Props) {
   // ── Sanitize input: filter empties, dedupe, trim ─────────────────────────
@@ -48,8 +57,8 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
     return out;
   }, [images]);
 
-  const hasMultiple = cleanImages.length > 1;
   const total = cleanImages.length;
+  const hasMultiple = total > 1;
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -73,7 +82,6 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   const goTo = useCallback(
     (idx: number) => {
       if (!hasMultiple || visibleTotal === 0) return;
-      // Normalize within [0, visibleTotal)
       const next = ((idx % visibleTotal) + visibleTotal) % visibleTotal;
       setActiveIndex(next);
     },
@@ -83,7 +91,12 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   const goNext = useCallback(() => goTo(activeIndex + 1), [goTo, activeIndex]);
   const goPrev = useCallback(() => goTo(activeIndex - 1), [goTo, activeIndex]);
 
-  // ── Keyboard navigation ─────────────────────────────────────────────────
+  const openLightbox = useCallback((idx: number) => {
+    setActiveIndex(idx);
+    setLightboxOpen(true);
+  }, []);
+
+  // ── Keyboard navigation (only when lightbox is open) ────────────────────
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -92,7 +105,6 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
       else if (e.key === "ArrowLeft") goPrev();
     };
     window.addEventListener("keydown", onKey);
-    // Lock body scroll while lightbox is open
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
@@ -112,133 +124,170 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
   // ── Empty state ─────────────────────────────────────────────────────────
   if (total === 0 || visibleTotal === 0) {
     return (
-      <div className="aspect-[16/10] rounded-2xl bg-[#F4F5F7] flex items-center justify-center text-[#9CA3AF]">
-        <div className="text-center">
-          <Maximize2 className="size-10 mx-auto mb-2 opacity-40" />
+      <div className="aspect-[16/10] sm:aspect-[16/9] rounded-2xl bg-[#F4F5F7] flex items-center justify-center text-[#9CA3AF]">
+        <div className="text-center px-6">
+          <Images className="size-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No images available</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <>
-      {/* ─────────────────────────────────────────────────────────────────
-          MAIN GALLERY
-         ───────────────────────────────────────────────────────────────── */}
-      <div className="relative">
-        {/* Main image — clickable to open lightbox */}
-        <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#F4F5F7] group">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={activeIndex}
-              src={visibleImages[activeIndex]}
-              alt={`${title} — image ${activeIndex + 1} of ${visibleTotal}`}
-              initial={{ opacity: 0, scale: 1.02 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full h-full object-cover cursor-zoom-in"
-              onClick={() => setLightboxOpen(true)}
-              onError={() => {
-                // Map visibleImages index back to cleanImages index
-                const brokenUrl = visibleImages[activeIndex];
-                const cleanIdx = cleanImages.indexOf(brokenUrl);
-                if (cleanIdx >= 0) handleImageError(cleanIdx);
-              }}
-              draggable={false}
-            />
-          </AnimatePresence>
+  // ── Helper: render a single image with error fallback ──────────────────
+  const renderImage = (url: string, idx: number, alt: string) => (
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      className="w-full h-full object-cover"
+      onError={() => {
+        const cleanIdx = cleanImages.indexOf(url);
+        if (cleanIdx >= 0) handleImageError(cleanIdx);
+      }}
+      draggable={false}
+    />
+  );
 
-          {/* Subtle navy gradient overlay at the bottom for badge legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/35 via-transparent to-transparent pointer-events-none" />
-
-          {/* Top-left: status badge (gold) — only when statusLabel provided */}
+  // ═══════════════════════════════════════════════════════════════════════
+  // COLLAGE LAYOUT — adapts to image count
+  // ═══════════════════════════════════════════════════════════════════════
+  const renderCollage = () => {
+    // ── 1 image: full-width single hero ──
+    if (visibleTotal === 1) {
+      return (
+        <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#F4F5F7] group cursor-zoom-in">
+          {renderImage(visibleImages[0], 0, `${title} — image 1 of 1`)}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
           {statusLabel && (
             <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
               {statusLabel}
             </span>
           )}
-
-          {/* Top-right: expand-to-lightbox button */}
           <button
-            onClick={() => setLightboxOpen(true)}
+            onClick={() => openLightbox(0)}
             aria-label="Open full-screen gallery"
-            title="View full screen"
             className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
           >
             <Maximize2 className="size-4 text-[#0A1F44]" />
           </button>
-
-          {/* Bottom-left: image counter (e.g. "1 / 12") */}
-          {hasMultiple && (
-            <span className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono">
-              {activeIndex + 1} <span className="opacity-50">/</span>{" "}
-              {visibleTotal}
-            </span>
-          )}
-
-          {/* Bottom-right: "Click to expand" hint (premium touch) */}
-          {hasMultiple && (
-            <span className="hidden sm:inline-flex absolute bottom-4 right-4 items-center gap-1.5 bg-white/95 backdrop-blur-md text-[#0A1F44] text-[10px] font-medium px-2.5 py-1.5 rounded-md tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
-              <ZoomIn className="size-3 text-[#C9A961]" /> Click to expand
-            </span>
-          )}
-
-          {/* Prev / Next arrows — only when multiple images */}
-          {hasMultiple && (
-            <>
-              <button
-                onClick={goPrev}
-                aria-label="Previous image"
-                className="absolute top-1/2 left-3 -translate-y-1/2 size-11 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
-              >
-                <ChevronLeft className="size-5 text-[#0A1F44]" />
-              </button>
-              <button
-                onClick={goNext}
-                aria-label="Next image"
-                className="absolute top-1/2 right-3 -translate-y-1/2 size-11 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md"
-              >
-                <ChevronRight className="size-5 text-[#0A1F44]" />
-              </button>
-            </>
-          )}
         </div>
+      );
+    }
 
-        {/* ───────────────────────────────────────────────────────────────
-            THUMBNAIL STRIP — horizontal scroll, click to jump
-           ─────────────────────────────────────────────────────────────── */}
-        {hasMultiple && (
-          <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-thin pb-1">
-            {visibleImages.map((img, idx) => (
-              <button
-                key={`${img}-${idx}`}
-                onClick={() => goTo(idx)}
-                aria-label={`View image ${idx + 1}`}
-                aria-current={idx === activeIndex}
-                className={`relative flex-shrink-0 w-20 h-16 sm:w-24 sm:h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                  idx === activeIndex
-                    ? "border-[#C9A961] shadow-md ring-2 ring-[#C9A961]/20"
-                    : "border-transparent opacity-70 hover:opacity-100 hover:border-[#E5E7EB]"
-                }`}
-              >
-                <img
-                  src={img}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  draggable={false}
-                />
-                {/* Subtle navy tint on inactive thumbnails */}
-                {idx !== activeIndex && (
-                  <div className="absolute inset-0 bg-[#0A1F44]/10 pointer-events-none" />
-                )}
-              </button>
-            ))}
+    // ── 2 images: 50/50 split (left + right) ──
+    if (visibleTotal === 2) {
+      return (
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden">
+          {/* Left: image 1 */}
+          <button
+            onClick={() => openLightbox(0)}
+            aria-label="Open gallery — image 1"
+            className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+          >
+            {renderImage(visibleImages[0], 0, `${title} — image 1 of 2`)}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
+            {statusLabel && (
+              <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
+                {statusLabel}
+              </span>
+            )}
+            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <Maximize2 className="size-4 text-[#0A1F44]" />
+            </div>
+          </button>
+          {/* Right: image 2 */}
+          <button
+            onClick={() => openLightbox(1)}
+            aria-label="Open gallery — image 2"
+            className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+          >
+            {renderImage(visibleImages[1], 1, `${title} — image 2 of 2`)}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/30 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <Maximize2 className="size-4 text-[#0A1F44]" />
+            </div>
+          </button>
+        </div>
+      );
+    }
+
+    // ── 3+ images: 1 large left + 2 stacked right (Dubizzle-style UX) ──
+    // Mobile: same layout but tighter — keeps the visual signature.
+    const hasMoreThanThree = visibleTotal > 3;
+    const extraCount = visibleTotal - 3;
+
+    return (
+      <div className="grid grid-cols-4 grid-rows-2 gap-2 sm:gap-3 rounded-2xl overflow-hidden aspect-[16/10] sm:aspect-[16/9]">
+        {/* Left: image 1 (spans 2 rows, takes 2/3 width on sm+) */}
+        <button
+          onClick={() => openLightbox(0)}
+          aria-label="Open gallery — main image"
+          className="relative col-span-4 sm:col-span-3 row-span-2 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+        >
+          {renderImage(visibleImages[0], 0, `${title} — image 1 of ${visibleTotal}`)}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/35 via-transparent to-transparent pointer-events-none" />
+          {statusLabel && (
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1.5 rounded-full tracking-wide shadow-md">
+              {statusLabel}
+            </span>
+          )}
+          <div className="absolute top-4 right-4 size-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+            <Maximize2 className="size-4 text-[#0A1F44]" />
           </div>
-        )}
+          {/* Mobile hint: counter badge bottom-left of main image */}
+          <span className="absolute bottom-4 left-4 sm:hidden inline-flex items-center gap-1 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1.5 rounded-md tracking-wide font-mono">
+            <Images className="size-3" /> {visibleTotal} photos
+          </span>
+        </button>
+
+        {/* Right-top: image 2 (hidden on mobile to keep layout clean) */}
+        <button
+          onClick={() => openLightbox(1)}
+          aria-label="Open gallery — image 2"
+          className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+        >
+          {renderImage(visibleImages[1], 1, `${title} — image 2 of ${visibleTotal}`)}
+          <div className="absolute inset-0 bg-[#0A1F44]/0 group-hover:bg-[#0A1F44]/15 transition-colors pointer-events-none" />
+        </button>
+
+        {/* Right-bottom: image 3 (with +X Photos overlay if 4+ images) */}
+        <button
+          onClick={() => openLightbox(hasMoreThanThree ? 3 : 2)}
+          aria-label={
+            hasMoreThanThree
+              ? `Open gallery — view all ${visibleTotal} photos`
+              : "Open gallery — image 3"
+          }
+          className="hidden sm:block relative col-span-1 row-span-1 overflow-hidden bg-[#F4F5F7] group cursor-zoom-in"
+        >
+          {renderImage(
+            visibleImages[2],
+            2,
+            `${title} — image 3 of ${visibleTotal}`
+          )}
+          {/* Dark overlay so the "+X Photos" text is legible */}
+          <div className="absolute inset-0 bg-[#0A1F44]/0 group-hover:bg-[#0A1F44]/30 transition-colors pointer-events-none flex items-center justify-center">
+            {hasMoreThanThree ? (
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-[#0A1F44] text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5">
+                <Images className="size-3.5 text-[#C9A961]" />
+                View all {visibleTotal}
+              </span>
+            ) : null}
+          </div>
+          {/* Persistent "+X Photos" badge (always visible, bottom-right) */}
+          {hasMoreThanThree && (
+            <span className="absolute bottom-2 right-2 bg-[#0A1F44]/85 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md inline-flex items-center gap-1 font-mono">
+              +{extraCount}
+            </span>
+          )}
+        </button>
       </div>
+    );
+  };
+
+  return (
+    <>
+      {renderCollage()}
 
       {/* ─────────────────────────────────────────────────────────────────
           FULL-SCREEN LIGHTBOX
@@ -255,14 +304,14 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
           >
             {/* Top bar: counter + close button */}
             <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-center justify-between text-white z-10">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 {hasMultiple && (
-                  <span className="font-mono text-sm font-medium tracking-wide bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-md">
+                  <span className="font-mono text-sm font-medium tracking-wide bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-md flex-shrink-0">
                     {activeIndex + 1} <span className="opacity-50">/</span>{" "}
                     {visibleTotal}
                   </span>
                 )}
-                <span className="text-xs text-white/70 truncate max-w-[60vw]">
+                <span className="text-xs text-white/70 truncate">
                   {title}
                 </span>
               </div>
@@ -272,7 +321,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
                   setLightboxOpen(false);
                 }}
                 aria-label="Close gallery"
-                className="size-11 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 flex items-center justify-center transition-colors"
+                className="size-11 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <X className="size-5 text-white" />
               </button>
@@ -286,7 +335,6 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               dragElastic={0.2}
               onDragEnd={(e, info) => {
                 if (!hasMultiple) return;
-                // Stop click propagation so the close-on-backdrop doesn't fire
                 e.stopPropagation?.();
                 const threshold = 50;
                 if (info.offset.x < -threshold) goNext();
@@ -309,7 +357,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
               </AnimatePresence>
             </motion.div>
 
-            {/* Prev / Next — lightbox version (gold accent for premium feel) */}
+            {/* Prev / Next — lightbox version (gold accent on hover) */}
             {hasMultiple && (
               <>
                 <button
@@ -318,7 +366,7 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
                     goPrev();
                   }}
                   aria-label="Previous image"
-                  className="absolute top-1/2 left-3 sm:left-6 -translate-y-1/2 size-12 sm:size-14 rounded-full bg-white/10 backdrop-blur-md hover:bg-[#C9A961] hover:text-[#0A1F44] flex items-center justify-center transition-all text-white"
+                  className="absolute top-1/2 left-3 sm:left-6 -translate-y-1/2 size-12 sm:size-14 rounded-full bg-white/10 backdrop-blur-md hover:bg-[#C9A961] hover:text-[#0A1F44] flex items-center justify-center transition-all text-white z-10"
                 >
                   <ChevronLeft className="size-6" />
                 </button>
@@ -328,14 +376,14 @@ export function PropertyGallery({ title, images, statusLabel }: Props) {
                     goNext();
                   }}
                   aria-label="Next image"
-                  className="absolute top-1/2 right-3 sm:right-6 -translate-y-1/2 size-12 sm:size-14 rounded-full bg-white/10 backdrop-blur-md hover:bg-[#C9A961] hover:text-[#0A1F44] flex items-center justify-center transition-all text-white"
+                  className="absolute top-1/2 right-3 sm:right-6 -translate-y-1/2 size-12 sm:size-14 rounded-full bg-white/10 backdrop-blur-md hover:bg-[#C9A961] hover:text-[#0A1F44] flex items-center justify-center transition-all text-white z-10"
                 >
                   <ChevronRight className="size-6" />
                 </button>
               </>
             )}
 
-            {/* Bottom: thumbnail strip in lightbox (only on sm+ for thumb-friendly UX) */}
+            {/* Bottom: thumbnail strip in lightbox (desktop only) */}
             {hasMultiple && (
               <div className="hidden sm:flex absolute bottom-0 inset-x-0 p-6 gap-2 overflow-x-auto justify-start max-w-full">
                 {visibleImages.map((img, idx) => (
