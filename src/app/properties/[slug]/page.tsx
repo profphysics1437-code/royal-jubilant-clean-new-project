@@ -188,6 +188,82 @@ function buildWhatsAppEnquiryUrl(opts: {
 
 // ---------- metadata -------------------------------------------------------
 
+/**
+ * Build a Bayut-style property description for OG/Twitter meta tags.
+ * Format: "{beds}-bed, {baths}-bath, {area} sqft {type} for {status}
+ *          at {community} for AED {price} {frequency}, listed by {agent}.
+ *          View floor plan, amenities & more."
+ *
+ * Returns a concise, scannable string that WhatsApp/Facebook/Twitter
+ * crawlers use as the link-preview description.
+ */
+function buildOGDescription(p: {
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  type: string;
+  status: string;
+  community: string;
+  price: number;
+  rentFrequency?: string | null;
+  agentName?: string | null;
+}): string {
+  const parts: string[] = [];
+
+  // "3-bed, 4-bath, 1,658 sqft"
+  if (p.bedrooms > 0) parts.push(`${p.bedrooms}-bed`);
+  if (p.bathrooms > 0) parts.push(`${p.bathrooms}-bath`);
+  if (p.area > 0) parts.push(`${p.area.toLocaleString()} sqft`);
+
+  // "apartment" / "villa" etc.
+  if (p.type) parts.push(p.type.toLowerCase());
+
+  // "for rent" / "for sale"
+  const statusPhrase =
+    p.status === "sale"
+      ? "for sale"
+      : p.status === "rent"
+      ? "for rent"
+      : p.status === "off-plan"
+      ? "off-plan"
+      : p.status === "commercial"
+      ? "commercial"
+      : "";
+  if (statusPhrase) parts.push(statusPhrase);
+
+  // "at Al Jaddaf"
+  if (p.community) parts.push(`at ${p.community}`);
+
+  // "for AED 128,000 yearly"
+  if (p.price > 0) {
+    const priceStr = `AED ${p.price.toLocaleString()}`;
+    const freq =
+      p.rentFrequency === "year"
+        ? "yearly"
+        : p.rentFrequency === "month"
+        ? "monthly"
+        : "";
+    parts.push(`for ${priceStr}${freq ? ` ${freq}` : ""}`);
+  }
+
+  let desc = parts.join(", ");
+
+  // ", listed by Royal Jubilant Real Estate"
+  if (p.agentName) {
+    desc += `, listed by ${p.agentName}`;
+  } else {
+    desc += `, listed by Royal Jubilant Real Estate`;
+  }
+
+  // ". View floor plan, amenities & more."
+  desc += ". View floor plan, amenities & more.";
+
+  // Cap at ~200 chars for OG description (WhatsApp truncates around 300)
+  if (desc.length > 200) desc = desc.slice(0, 197) + "...";
+
+  return desc;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -202,18 +278,74 @@ export async function generateMetadata({
 
   if (!p) return { title: "Property Not Found · Royal Jubilant" };
 
+  // Parse images for OG preview
+  const imgs = parseJsonField<string[]>(p.images, []);
+  const ogImage = imgs.length > 0 ? imgs[0] : null;
+
+  // Resolve agent name for OG description (Bayut-style "listed by X")
+  let agentName: string | null = null;
+  if (p.agentId) {
+    try {
+      const assignedUser = await db.user.findUnique({
+        where: { id: p.agentId },
+        select: { name: true, email: true },
+      });
+      if (assignedUser?.email) {
+        const agentProfile = await db.agent.findUnique({
+          where: { email: assignedUser.email },
+          select: { name: true },
+        });
+        agentName = agentProfile?.name || assignedUser.name || null;
+      }
+    } catch {
+      // ignore — agentName stays null, OG description uses company name
+    }
+  }
+
+  // Build Bayut-style OG description
+  const ogDescription = buildOGDescription({
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    area: p.area,
+    type: p.type,
+    status: p.status,
+    community: p.community,
+    price: p.price,
+    rentFrequency: p.rentFrequency,
+    agentName,
+  });
+
+  // Browser tab title — concise
+  const title = `${p.title} | Royal Jubilant Real Estate`;
+
+  // Canonical property URL — built from request headers (server component)
+  const headersList = await headers();
+  const host = headersList.get("host") || "www.royaljubilant.com";
+  const protocol = headersList.get("x-forwarded-proto") || "https";
+  const canonicalUrl = `${protocol}://${host}/properties/${encodeURIComponent(
+    p.slug || p.reference || p.id
+  )}`;
+
   return {
-    title: `${p.title} · Royal Jubilant Real Estate`,
-    description:
-      p.description?.slice(0, 160) ??
-      `${p.community} — AED ${p.price.toLocaleString()}`,
+    title,
+    description: ogDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
-      title: p.title,
-      description: p.description?.slice(0, 160) ?? "",
-      images: (() => {
-        const imgs = parseJsonField<string[]>(p.images, []);
-        return imgs.length ? [{ url: imgs[0] }] : [];
-      })(),
+      title,
+      description: ogDescription,
+      url: canonicalUrl,
+      siteName: "Royal Jubilant Real Estate",
+      type: "website",
+      locale: "en_AE",
+      images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: ogDescription,
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
