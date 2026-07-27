@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, TrendingUp, Clock, Star, Crown, Loader2 } from "lucide-react";
 import { properties as fallbackProperties } from "@/lib/data";
@@ -7,6 +8,15 @@ import { PropertyCard } from "@/components/site/PropertyCard";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/useApi";
+
+/**
+ * Resolves the URL segment used to navigate to a property detail page.
+ * Mirrors the fallback chain in PropertyCard: slug → reference → id.
+ */
+function getPropertyHref(p: any): string {
+  const segment = p.slug || p.reference || p.id;
+  return `/properties/${segment}`;
+}
 
 export function FeaturedProperties() {
   const { setActiveView } = useStore();
@@ -119,40 +129,44 @@ export function LuxuryCollection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: i * 0.1 }}
-              className="group cursor-pointer"
-              onClick={() => useStore.getState().openProperty(p.id)}
             >
-              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4">
-                <img
-                  src={p.images[0]}
-                  alt={p.title}
-                  className="w-full h-full object-cover zoom-img"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute top-4 left-4">
-                  <span className="px-3 py-1 rounded-full bg-[#C9A961] text-[#0A1F44] text-[10px] font-bold tracking-luxury uppercase">
-                    {p.type}
-                  </span>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                  <p className="text-[10px] tracking-luxury uppercase text-[#A68A3F] mb-2">
-                    {p.community}
-                  </p>
-                  <h3 className="font-serif text-xl font-medium leading-tight mb-2 line-clamp-2">
-                    {p.title}
-                  </h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-serif text-2xl font-semibold text-gradient-gold">
-                      AED {(p.price / 1000000).toFixed(1)}M
+              <Link
+                href={getPropertyHref(p)}
+                className="group block cursor-pointer"
+                aria-label={`View details of ${p.title}`}
+              >
+                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 transition-transform duration-500 group-hover:scale-[1.02]">
+                  <img
+                    src={p.images[0]}
+                    alt={p.title}
+                    className="w-full h-full object-cover zoom-img"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute top-4 left-4">
+                    <span className="px-3 py-1 rounded-full bg-[#C9A961] text-[#0A1F44] text-[10px] font-bold tracking-luxury uppercase">
+                      {p.type}
                     </span>
-                    {p.pricePerSqft && (
-                      <span className="text-xs text-white/60">
-                        · AED {p.pricePerSqft.toLocaleString()}/sqft
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                    <p className="text-[10px] tracking-luxury uppercase text-[#A68A3F] mb-2">
+                      {p.community}
+                    </p>
+                    <h3 className="font-serif text-xl font-medium leading-tight mb-2 line-clamp-2 group-hover:text-[#D4B875] transition-colors">
+                      {p.title}
+                    </h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-serif text-2xl font-semibold text-gradient-gold">
+                        AED {(p.price / 1000000).toFixed(1)}M
                       </span>
-                    )}
+                      {p.pricePerSqft && (
+                        <span className="text-xs text-white/60">
+                          · AED {p.pricePerSqft.toLocaleString()}/sqft
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             </motion.div>
           ))}
         </div>

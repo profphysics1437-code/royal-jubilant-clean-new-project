@@ -60,3 +60,6 @@ next-env.d.ts
 
 # Local dev scripts
 local-*
+
+# Tool intermediate outputs (read tool results, not source code)
+tool-results/

@@ -39,6 +39,8 @@ export interface Agent {
 
 export interface Property {
   id: string;
+  /** URL-friendly unique identifier — used by /properties/[slug] route. Falls back to id. */
+  slug?: string;
   title: string;
   status: ListingStatus;
   type: PropertyType;

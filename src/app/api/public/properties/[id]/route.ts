@@ -3,17 +3,47 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id } = await params;
-  const p = await db.property.findUnique({ where: { id } });
-  if (!p) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Allow lookup by id, slug, or reference (admin UIs and old links may use
+  // any of these as the URL segment).
+  const p =
+    (await db.property.findUnique({ where: { id } }).catch(() => null)) ??
+    (await db.property
+      .findUnique({ where: { slug: id } })
+      .catch(() => null)) ??
+    (await db.property
+      .findUnique({ where: { reference: id } })
+      .catch(() => null));
+
+  if (!p) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Block test/dummy records from being viewed on the public site even if
+  // someone has a direct link.
+  const isTest =
+    /^test\s+property/i.test(p.title ?? "") ||
+    /fixed\s+submission/i.test(p.title ?? "") ||
+    /^RENT-TEST-/i.test(p.reraNumber ?? "") ||
+    /^SALE-TEST-/i.test(p.reraNumber ?? "");
+  if (isTest) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   // Increment views (fire-and-forget)
-  db.property.update({ where: { id }, data: { views: { increment: 1 } } }).catch(() => {});
+  db.property
+    .update({ where: { id: p.id }, data: { views: { increment: 1 } } })
+    .catch(() => {});
 
   return NextResponse.json({
     property: {
       id: p.id,
+      slug: p.slug ?? p.reference,
       reference: p.reference,
       title: p.title,
       status: p.status,
@@ -41,8 +71,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       amenities: p.amenities ? JSON.parse(p.amenities) : [],
       indoorFeatures: p.indoorFeatures ? JSON.parse(p.indoorFeatures) : [],
       outdoorFeatures: p.outdoorFeatures ? JSON.parse(p.outdoorFeatures) : [],
-      buildingAmenities: p.buildingAmenities ? JSON.parse(p.buildingAmenities) : [],
-      nearbyLandmarks: p.nearbyLandmarks ? JSON.parse(p.nearbyLandmarks) : [],
+      buildingAmenities: p.buildingAmenities
+        ? JSON.parse(p.buildingAmenities)
+        : [],
+      nearbyLandmarks: p.nearbyLandmarks
+        ? JSON.parse(p.nearbyLandmarks)
+        : [],
       viewFeatures: p.viewFeatures ? JSON.parse(p.viewFeatures) : [],
       features: p.features ? JSON.parse(p.features) : [],
       images: p.images ? JSON.parse(p.images) : [],
