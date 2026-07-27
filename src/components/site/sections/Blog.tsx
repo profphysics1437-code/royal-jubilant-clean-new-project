@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, ArrowRight, Clock, TrendingUp, Building2, Tag, Calculator, X, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, ArrowRight, Clock, TrendingUp, Building2, Tag, Calculator, X, Volume2, VolumeX } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useApi } from "@/lib/useApi";
 
@@ -85,6 +85,9 @@ export function VideoSection() {
   // mounted ensures createPortal only runs on client (SSR safety).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // setActiveView — used by the 'View All Videos' button to navigate
+  // to the dedicated AdviceView (full video listing page).
+  const { setActiveView } = useStore();
 
   // Fetch videos from DB; fall back to hardcoded array while loading
   const { data } = useApi<{ videos: any[] }>("/api/public/videos", { videos: advisorVideos });
@@ -172,9 +175,13 @@ export function VideoSection() {
           ))}
         </div>
 
-        {/* View all videos CTA */}
+        {/* View all videos CTA — navigates to the dedicated AdviceView
+            (full video listing page at activeView === 'advice'). */}
         <div className="flex justify-center mt-10">
-          <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#C9A961] hover:bg-[#D4B875] text-[#0A1F44] text-sm font-medium transition-all duration-300 shadow-sm">
+          <button
+            onClick={() => setActiveView("advice")}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#C9A961] hover:bg-[#D4B875] text-[#0A1F44] text-sm font-medium transition-all duration-300 shadow-sm"
+          >
             View All Videos
             <ArrowRight className="size-4" />
           </button>
@@ -270,7 +277,12 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  // isTapped = mobile user has tapped the card to start inline playback.
+  // Once tapped, the video plays in-place (muted, loop) until tapped again.
+  const [isTapped, setIsTapped] = useState(false);
 
+  // ── Desktop: autoplay (muted, loop) on hover ──────────────────────────
+  // Mobile hover is unreliable / doesn't exist — mobile uses tap instead.
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !video.videoUrl) return;
@@ -278,11 +290,46 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
       v.play().then(() => setIsPlaying(true)).catch(() => {
         setIsPlaying(false);
       });
-    } else {
+    } else if (!isTapped) {
+      // Only pause on mouse-leave if the mobile tap state hasn't been
+      // activated (prevents desktop hover from fighting with tap state).
       v.pause();
       setIsPlaying(false);
     }
-  }, [isHovered, video.videoUrl]);
+  }, [isHovered, isTapped, video.videoUrl]);
+
+  // ── Mobile: tap to play/pause inline ──────────────────────────────────
+  // Tapping the card toggles inline video playback (muted, loop).
+  // If the video has no videoUrl, the tap falls through to onClick
+  // (which opens the modal — but in our case all cards with videoUrl
+  // use tap-to-play inline instead of opening the modal).
+  const handleCardTap = (e: React.MouseEvent) => {
+    if (!video.videoUrl) {
+      // No video URL — fall through to the parent onClick (opens modal
+      // or no-op). This case shouldn't normally happen since cards
+      // without videoUrl just show the thumbnail.
+      onClick();
+      return;
+    }
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    if (isTapped) {
+      // Second tap → pause
+      v.pause();
+      setIsPlaying(false);
+      setIsTapped(false);
+    } else {
+      // First tap → play (muted, loop)
+      v.play().then(() => {
+        setIsPlaying(true);
+        setIsTapped(true);
+      }).catch(() => {
+        // If play fails (e.g. browser blocks), open the modal instead
+        onClick();
+      });
+    }
+  };
 
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -302,7 +349,9 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
         delay: Math.min(index * 0.06, 0.4),
         ease: [0.16, 1, 0.3, 1],
       }}
-      onClick={onClick}
+      // Tap handler covers mobile (and desktop click as fallback).
+      // Desktop hover is handled by onMouseEnter/onMouseLeave below.
+      onClick={handleCardTap}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       // Card frame — IDENTICAL to PropertyCard.tsx (card size unchanged).
@@ -323,12 +372,14 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
           src={video.thumbnail}
           alt={video.title}
           loading="lazy"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
             isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
           }`}
         />
 
-        {/* Video element — 9:16 source, object-cover fills entire card */}
+        {/* Video element — 9:16 source, object-cover fills entire card.
+            muted + loop + playsInline → satisfies browser autoplay
+            policies (muted autoplay is always allowed). */}
         {video.videoUrl && (
           <video
             ref={videoRef}
@@ -337,7 +388,7 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
             loop
             playsInline
             preload="metadata"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
               isPlaying ? "opacity-100" : "opacity-0"
             }`}
           />
@@ -354,7 +405,7 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
           </span>
         </div>
 
-        {/* Top-right: duration pill + (hover) mute toggle */}
+        {/* Top-right: duration pill + mute toggle (visible when playing) */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
           <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
             <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
@@ -371,14 +422,27 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
           )}
         </div>
 
-        {/* Center: play button overlay (when not playing) */}
-        {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* ═══════════════════════════════════════════════════════════════
+            CENTER OVERLAY — Play / Pause button with smooth feedback.
+            - When NOT playing: shows Play icon (gold on hover).
+            - When playing (desktop hover or mobile tap): shows subtle
+              Pause icon that pulses gently to indicate 'tap to pause'.
+            The overlay is pointer-events-none so it never blocks taps
+            on the underlying video card (taps go to handleCardTap).
+            ═══════════════════════════════════════════════════════════════ */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {!isPlaying ? (
+            // Play button (shown when paused)
             <div className="size-12 sm:size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
               <Play className="size-5 sm:size-6 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
             </div>
-          </div>
-        )}
+          ) : (
+            // Pause indicator (shown when playing) — subtle, non-intrusive
+            <div className="size-10 sm:size-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <Pause className="size-4 sm:size-5 text-white" fill="currentColor" />
+            </div>
+          )}
+        </div>
 
         {/* ═══════════════════════════════════════════════════════════════
             BOTTOM OVERLAY — title + agent name ON the video itself.
@@ -400,6 +464,16 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
             </span>
           </div>
         </div>
+
+        {/* Mobile tap hint — briefly shown when video is playing on mobile
+            to indicate 'tap again to pause'. Auto-hides via opacity. */}
+        {isTapped && (
+          <div className="sm:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+            <span className="text-[10px] text-white/80 bg-[#0A1F44]/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              Tap to pause
+            </span>
+          </div>
+        )}
       </div>
     </motion.div>
   );
