@@ -7,9 +7,15 @@ import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 // ─── Supabase Storage Config ──────────────────────────────────────────────
-// Read from env (matches .env: SUPABASE_URL, SUPABASE_API_KEY).
-// Throws if missing — never fall back to a hardcoded secret (that would
-// leak the key into git history).
+// Alias route for /api/admin/upload — same implementation as /api/admin/media.
+// Kept as a separate file because five frontend callers (MediaUploadField,
+// PhotoUploader, ProfilePage, videos page, testimonials page) all POST to
+// /api/admin/upload. Rather than editing each caller, we accept both URLs.
+//
+// NEVER hardcode the service role key here — read it from env. Falling back
+// to a hardcoded secret caused a previous commit to be blocked by GitHub
+// Push Protection.
+
 const SUPA_URL =
   process.env.SUPABASE_URL ||
   "https://vxmxxoymiwpoaekgmigb.supabase.co";
@@ -60,12 +66,12 @@ export async function GET(req: NextRequest) {
 // POST: Upload one or more files to Supabase Storage.
 //
 // Accepts two field shapes for backwards compatibility:
-//   - formData.append("file", file)            → single-file (returns { file })
-//   - formData.append("files", file)           → multi-file  (returns { files: [...] })
-//   - formData.append("files", file1, file2…)  → multi-file  (returns { files: [...] })
+//   - formData.append("file", file)            → single-file
+//   - formData.append("files", file)           → multi-file
+//   - formData.append("files", file1, file2…)  → multi-file
 //
 // Always returns `{ files: [...] }` so legacy callers reading `data.files[0]`
-// keep working, and new callers reading `data.file` also work.
+// keep working, and single-file callers reading `data.file` also work.
 export async function POST(req: NextRequest) {
   const authErr = await requireAdmin();
   if (authErr) return authErr;

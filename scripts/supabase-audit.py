@@ -25,8 +25,20 @@ import urllib.request
 import urllib.error
 
 # ─── Config ────────────────────────────────────────────────────────────────
+# Read service role key from env var — NEVER hardcode it (GitHub Push
+# Protection will block commits containing Supabase secrets).
 SUPABASE_URL = "https://vxmxxoymiwpoaekgmigb.supabase.co"
-SERVICE_ROLE_KEY = "${SUPABASE_API_KEY_ENV_VAR}"
+SERVICE_ROLE_KEY = os.environ.get("SUPABASE_API_KEY") or os.environ.get(
+    "SUPABASE_SERVICE_ROLE_KEY"
+)
+
+if not SERVICE_ROLE_KEY:
+    print(
+        "ERROR: Set SUPABASE_API_KEY env var before running this script.\n"
+        "  Example: SUPABASE_API_KEY=sb_secret_xxx python3 scripts/supabase-audit.py",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 REST_BASE = f"{SUPABASE_URL}/rest/v1"
 HEADERS = {
