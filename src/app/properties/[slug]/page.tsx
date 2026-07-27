@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { LandingPageLeadForm } from "@/components/site/LandingPageLeadForm";
 import { PropertyCard } from "@/components/site/PropertyCard";
+import { PropertyGallery } from "@/components/site/PropertyGallery";
 import { properties as fallbackProperties, formatPrice, getAgentById } from "@/lib/data";
 import {
   ArrowLeft,
@@ -233,53 +234,15 @@ export default async function PropertyDetailPage({
         </div>
       </header>
 
-      {/* Gallery */}
+      {/* Gallery — dynamic, premium Royal Jubilant design with thumbnails,
+          lightbox, swipe, keyboard nav. Handles empty/broken/duplicate
+          images gracefully. Hides controls when only 1 image exists. */}
       <section className="container mx-auto px-4 lg:px-6 pt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
-          <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#F4F5F7]">
-            {images[0] ? (
-              <img
-                src={images[0]}
-                alt={property.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[#9CA3AF]">
-                No image
-              </div>
-            )}
-            <span className="absolute top-3 left-3 inline-flex items-center gap-1 bg-[#C9A961] text-[#0A1F44] text-[11px] font-semibold px-3 py-1 rounded-full tracking-wide">
-              {statusLabel(property.status)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-            {images.slice(1, 3).map((img, i) => (
-              <div
-                key={i}
-                className="relative aspect-[4/3] lg:aspect-[16/10] rounded-2xl overflow-hidden bg-[#F4F5F7]"
-              >
-                <img
-                  src={img}
-                  alt={`${property.title} ${i + 2}`}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-            {images.length <= 1 && (
-              <>
-                <div className="aspect-[4/3] lg:aspect-[16/10] rounded-2xl bg-[#F4F5F7]" />
-                <div className="aspect-[4/3] lg:aspect-[16/10] rounded-2xl bg-[#F4F5F7]" />
-              </>
-            )}
-          </div>
-        </div>
-
-        {images.length > 3 && (
-          <p className="text-xs text-[#9CA3AF] mt-2">
-            + {images.length - 3} more image{images.length - 3 > 1 ? "s" : ""}{" "}
-            available
-          </p>
-        )}
+        <PropertyGallery
+          title={property.title}
+          images={images}
+          statusLabel={statusLabel(property.status)}
+        />
       </section>
 
       {/* Main content */}
