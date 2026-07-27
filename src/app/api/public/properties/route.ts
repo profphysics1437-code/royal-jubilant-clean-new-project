@@ -49,6 +49,64 @@ function isTestProperty(p: {
   return false;
 }
 
+/**
+ * Normalize agent data into a single, predictable shape for the frontend.
+ *
+ * The DB has two agent concepts:
+ *   1. `User` (auth record, linked via Property.agentId) — has email,
+ *      name, phone, avatarUrl.
+ *   2. `Agent` (public profile record) — has the rich fields: title,
+ *      photo, whatsapp, languages, specializations, etc.
+ *
+ * They are linked by email. If both exist, prefer the rich `Agent` record.
+ * If only the User exists, use User fields with sensible defaults.
+ * If neither exists, return null (the card handles this gracefully).
+ */
+function buildAgentPayload(
+  userProfile: {
+    id: string;
+    name: string | null;
+    email: string;
+    phone: string | null;
+    avatarUrl: string | null;
+  } | null,
+  agentProfile: {
+    id: string;
+    name: string;
+    title: string;
+    photo: string;
+    phone: string;
+    whatsapp: string;
+    email: string;
+  } | null
+) {
+  if (agentProfile) {
+    return {
+      id: agentProfile.id,
+      name: agentProfile.name,
+      title: agentProfile.title,
+      photo: agentProfile.photo,
+      phone: agentProfile.phone,
+      whatsapp: agentProfile.whatsapp,
+      email: agentProfile.email,
+      source: "agent-profile" as const,
+    };
+  }
+  if (userProfile) {
+    return {
+      id: userProfile.id,
+      name: userProfile.name || "Royal Jubilant Advisor",
+      title: "Property Consultant",
+      photo: userProfile.avatarUrl || "",
+      phone: userProfile.phone || "",
+      whatsapp: "",
+      email: userProfile.email,
+      source: "user" as const,
+    };
+  }
+  return null;
+}
+
 // GET: Public property listings
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -63,6 +121,7 @@ export async function GET(req: NextRequest) {
   // no limit, so coerce 0 → undefined.
   const take = limit > 0 ? limit : undefined;
 
+  // 1. Fetch properties + their assigned User (auth record)
   const properties = await db.property.findMany({
     where: {
       published: true,
@@ -73,19 +132,56 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
     take,
+    include: {
+      agent: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          avatarUrl: true,
+        },
+      },
+    },
   });
 
-  // Filter out test/dummy records (defence in depth — admin may have left
-  // some seed data in the DB; we never want it to leak to the public site).
+  // Filter out test/dummy records BEFORE enriching (saves a DB call for them)
   const publicProperties = properties.filter((p) => !isTestProperty(p));
 
-  // Parse JSON string fields for frontend
-  const parsedProperties = publicProperties.map((p) => ({
-    ...p,
-    images: parseJsonField(p.images, []),
-    amenities: parseJsonField(p.amenities, []),
-    features: parseJsonField(p.features, []),
-  }));
+  // 2. Look up rich Agent profiles by matching emails (single batched query)
+  const agentEmails = Array.from(
+    new Set(
+      publicProperties
+        .map((p) => p.agent?.email)
+        .filter((e): e is string => !!e)
+    )
+  );
+
+  const agentProfiles = agentEmails.length
+    ? await db.agent.findMany({
+        where: { email: { in: agentEmails }, published: true },
+      })
+    : [];
+
+  const agentProfileMap = new Map(agentProfiles.map((a) => [a.email, a]));
+
+  // 3. Enrich each property with normalized agent payload
+  const parsedProperties = publicProperties.map((p) => {
+    const userProfile = p.agent;
+    const agentProfile = userProfile?.email
+      ? agentProfileMap.get(userProfile.email) ?? null
+      : null;
+
+    return {
+      ...p,
+      // Detach the raw User relation — frontend should use the normalized
+      // `agent` payload below to avoid touching inconsistent fields.
+      agent: buildAgentPayload(userProfile, agentProfile),
+      images: parseJsonField(p.images, []),
+      amenities: parseJsonField(p.amenities, []),
+      features: parseJsonField(p.features, []),
+    };
+  });
 
   return NextResponse.json({ properties: parsedProperties });
 }

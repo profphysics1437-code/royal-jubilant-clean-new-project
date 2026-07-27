@@ -12,12 +12,53 @@ export async function GET(
   // Allow lookup by id, slug, or reference (admin UIs and old links may use
   // any of these as the URL segment).
   const p =
-    (await db.property.findUnique({ where: { id } }).catch(() => null)) ??
     (await db.property
-      .findUnique({ where: { slug: id } })
+      .findUnique({
+        where: { id },
+        include: {
+          agent: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      })
       .catch(() => null)) ??
     (await db.property
-      .findUnique({ where: { reference: id } })
+      .findUnique({
+        where: { slug: id },
+        include: {
+          agent: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      })
+      .catch(() => null)) ??
+    (await db.property
+      .findUnique({
+        where: { reference: id },
+        include: {
+          agent: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      })
       .catch(() => null));
 
   if (!p) {
@@ -39,6 +80,36 @@ export async function GET(
   db.property
     .update({ where: { id: p.id }, data: { views: { increment: 1 } } })
     .catch(() => {});
+
+  // Resolve rich Agent profile (matched by email)
+  let agentProfile: any = null;
+  if (p.agent?.email) {
+    agentProfile = await db.agent
+      .findUnique({ where: { email: p.agent.email } })
+      .catch(() => null);
+  }
+
+  const agent = agentProfile
+    ? {
+        id: agentProfile.id,
+        name: agentProfile.name,
+        title: agentProfile.title,
+        photo: agentProfile.photo,
+        phone: agentProfile.phone,
+        whatsapp: agentProfile.whatsapp,
+        email: agentProfile.email,
+      }
+    : p.agent
+    ? {
+        id: p.agent.id,
+        name: p.agent.name || "Royal Jubilant Advisor",
+        title: "Property Consultant",
+        photo: p.agent.avatarUrl || "",
+        phone: p.agent.phone || "",
+        whatsapp: "",
+        email: p.agent.email,
+      }
+    : null;
 
   return NextResponse.json({
     property: {
@@ -91,6 +162,7 @@ export async function GET(
         address: p.locationAddress ?? p.community,
       },
       agentId: p.agentId ?? undefined,
+      agent,
       developer_id: p.developer ?? undefined,
       featured: p.featured,
       isLatest: p.isLatest,

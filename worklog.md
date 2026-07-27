@@ -89,3 +89,70 @@ Stage Summary:
   - MODIFIED: `/home/z/my-project/src/app/api/public/properties/route.ts`
   - MODIFIED: `/home/z/my-project/src/app/api/public/properties/[id]/route.ts`
   - MODIFIED: `/home/z/my-project/src/lib/data.ts` (added `slug?: string` to Property interface)
+
+---
+Task ID: premium-property-card-redesign
+Agent: main
+Task: Redesign PropertyCard as premium Dubai real estate card with full agent info + 1-click contact (user complained previous version was too simplified).
+
+Work Log:
+- Inspected original PropertyCard from git history (commit 7b20f7a) to identify what functionality existed previously. Original had: agent photo, name, phone/whatsapp/email buttons (tiny 7px squares — not thumb-friendly), heart button, reference/RERA badges.
+- Inspected Supabase schema: discovered TWO agent concepts in DB:
+  1. `User` model (auth record linked via Property.agentId) — has email, name, phone, avatarUrl only.
+  2. `Agent` model (public profile record) — has rich fields: title, photo, whatsapp, languages, specializations, communities, biography, awards, rating, etc.
+  - These are linked by email (not foreign key). My previous API only joined the User, missing the rich Agent profile entirely — that's why the card looked generic.
+- Updated `/api/public/properties/route.ts`:
+  - Added `include: { agent: { select: { id, name, email, phone, avatarUrl } } }` to fetch User relation.
+  - Added batched `db.agent.findMany({ where: { email: { in: agentEmails }, published: true } })` to fetch rich Agent profiles matched by email.
+  - Added `buildAgentPayload()` helper that normalizes both into a single consistent shape — prefers rich Agent profile when available, falls back to User fields with sensible defaults ("Property Consultant" title etc.).
+  - Kept all previous fixes: test/dummy record filtering, `limit=0` semantics, `?luxury=1` support.
+- Updated `/api/public/properties/[id]/route.ts` similarly — includes agent User relation + looks up Agent profile by email.
+- Completely rewrote `src/components/site/PropertyCard.tsx` as a premium, conversion-focused card:
+  - **Image section**: 4/3 aspect ratio, smooth `group-hover:scale-[1.06]` zoom over 700ms, navy gradient overlay, top-left status badge (gold bg), Luxury badge (navy bg with crown icon + gold text), Featured badge (white bg with star icon), Off-Plan badge. Top-right heart button (44px, glass morphism, hover scale-110). Bottom-left reference number + bottom-right RERA permit (both in navy/glass pills).
+  - **Body section**: Price (22px serif bold navy), price/sqft (muted small), title (sm-base, hover gold), location (with gold MapPin icon, community only — dropped subCommunity that was causing "Bur Dubai · Business Bay · jamera" mismatch), specs row (beds/baths/area/parking with subtle top divider).
+  - **Agent + Contact footer** (the conversion-focused part):
+    - Agent identity row: 44-48px round photo (with gold ring), name + title/role, both clickable → opens agent profile modal.
+    - Falls back to gradient navy avatar with initials when no photo.
+    - Two-button row: Call (navy bg) + WhatsApp (green #25D366 bg) — both 40-44px tall (thumb-friendly on mobile).
+    - WhatsApp URL includes pre-filled message with agent name + property title + reference.
+    - Single-button case (only phone OR only whatsapp) spans full width (no awkward gap).
+    - View Property button (full-width, white bg with navy border + gold hover) below contact buttons.
+  - **Edge cases handled**:
+    - No agent assigned → shows generic "Royal Jubilant Team" avatar + "View Property" CTA.
+    - No agent photo → gradient navy circle with initials (e.g. "MZ" for Muhammad Javed Zafar).
+    - No phone → Call button hidden, WhatsApp spans full width.
+    - No whatsapp → WhatsApp button hidden, Call spans full width.
+    - Neither phone nor whatsapp → contact section hidden, only View Property shown.
+  - **Responsive design**:
+    - Mobile: all buttons 40px tall (h-10), text-xs — fits thumbs comfortably, no horizontal overflow.
+    - Desktop (sm+): all buttons 44px tall (h-11), text-sm — premium feel.
+    - Photo: 44px on mobile, 48px on desktop.
+- Helper functions:
+  - `buildWhatsAppUrl(whatsapp, agentName, propertyTitle, propertyRef)` — strips non-digits, builds `https://wa.me/{digits}?text={prefilled message}` URL.
+  - `buildTelUrl(phone)` — validates input has digits, builds `tel:` URL.
+  - `getInitials(name)` — extracts first letter of first + last name for fallback avatar.
+  - `getPropertyHref(property)` — returns `/properties/{slug|reference|id}` (unchanged from previous task).
+- Verified TypeScript: zero errors in edited files.
+- Verified ESLint: clean on all 3 edited files.
+- Verified `npx next build`: "Compiled successfully in 17.4s", `/properties/[slug]` route registered.
+
+Stage Summary:
+- PropertyCard is now a proper premium Dubai real estate card, NOT a generic Bootstrap template.
+- All information hierarchy requirements met:
+  1. Property image (with all overlay badges)
+  2. Rent/Sale status (gold badge, top-left)
+  3. Property title (with hover gold effect)
+  4. Location (gold map pin, community only)
+  5. Price (large serif bold navy)
+  6. Key property details (beds/baths/area/parking)
+  7. Agent information (photo + name + title — clearly visible)
+  8. Direct contact actions (Call + WhatsApp — 1 click away)
+  9. View Property (full-width button)
+- Royal Jubilant brand identity applied throughout: Navy #0A1F44, Gold #C9A961/#A68A3F, Silver #9CA3AF/#6B7280, White #FFFFFF.
+- Agent data flows correctly from Supabase: Property → User (auth record) → Agent profile (matched by email) → normalized payload sent to frontend.
+- All existing functionality preserved: heart/favorite button, RERA permit display, reference number, featured/luxury badges, agent profile modal, navigation to detail page.
+- Build verified: ✓ Compiled successfully in 17.4s.
+- Produced artifacts:
+  - MODIFIED: `/home/z/my-project/src/app/api/public/properties/route.ts` (added User join + Agent profile lookup)
+  - MODIFIED: `/home/z/my-project/src/app/api/public/properties/[id]/route.ts` (same agent enrichment)
+  - MODIFIED: `/home/z/my-project/src/components/site/PropertyCard.tsx` (complete redesign — premium conversion-focused card)
