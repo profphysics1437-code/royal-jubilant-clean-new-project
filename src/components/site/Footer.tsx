@@ -68,7 +68,7 @@ export function Footer() {
     { label: "Meet the Agents", view: "agents" },
     { label: "Market Insights", view: "blog" },
     { label: "Careers", view: "careers" },
-    { label: "Contact Us", view: "contact" },
+    { label: "Rental Yield Calculator", view: "calc-yield" },
   ]);
   const col4 = parseCol("footer.col4", "Company", [
     { label: "About Us", view: "about" },
