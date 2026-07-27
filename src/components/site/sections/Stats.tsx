@@ -170,35 +170,18 @@ export function Testimonials() {
           icon={<Quote className="size-4" />}
         />
 
-        {/* Portrait cards — 6 per row on desktop, auto height so content never cuts */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 mt-12">
+        {/* Testimonial cards — equal height + width, Read More for long quotes.
+            - Grid forces equal column widths (grid-cols).
+            - Each card uses flex flex-col + fixed-aspect header + flex-1 body
+              so the longest quote determines row height, all siblings match.
+            - Quote text is clamped to 4 lines by default with a "Read More"
+              toggle that expands to show the full quote inline.
+            - Same number of cards (6) and same responsive grid as before:
+              2 cols on mobile, 3 on tablet, 6 on desktop.
+        */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 mt-12 items-stretch">
           {testimonials.slice(0, 6).map((t, i) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, delay: i * 0.06 }}
-              className="flex flex-col bg-white rounded-xl overflow-hidden border border-border/60 shadow-sm hover:shadow-xl transition-shadow h-full"
-            >
-              {/* Navy header — avatar + name + rating */}
-              <div className="bg-[#0A1F44] text-white p-3 flex flex-col items-center text-center flex-shrink-0">
-                <img src={t.avatar} alt={t.name} className="size-12 rounded-full object-cover border-2 border-[#C9A961]/50 mb-2" />
-                <div className="text-[13px] font-semibold leading-tight">{t.name}</div>
-                <div className="text-[10px] text-[#C9A961] mt-0.5 uppercase tracking-wider">{t.role}</div>
-                <div className="flex items-center gap-0.5 mt-1.5">
-                  {[1,2,3,4,5].map((n) => (
-                    <Star key={n} className={`size-2.5 ${n <= t.rating ? "fill-[#C9A961] text-[#A68A3F]" : "text-white/20"}`} />
-                  ))}
-                </div>
-              </div>
-              {/* White body — quote + location, no flex-1 so it grows naturally */}
-              <div className="p-3 bg-white">
-                <Quote className="size-5 text-[#A68A3F]/20 mb-1" />
-                <p className="text-[12px] text-[#0A1F44] leading-snug font-serif italic">"{t.quote}"</p>
-                <div className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/40">{t.location} · {t.service}</div>
-              </div>
-            </motion.div>
+            <TestimonialCard key={t.id} t={t} i={i} />
           ))}
         </div>
 
@@ -249,5 +232,91 @@ export function Testimonials() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TestimonialCard — single testimonial with equal height + Read More
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Character threshold above which the "Read More" toggle kicks in.
+ * Quotes shorter than this are shown in full — no toggle.
+ * Tuned for the 12px serif italic body text in a 6-column grid card.
+ */
+const TESTIMONIAL_READ_MORE_THRESHOLD = 140;
+
+function TestimonialCard({ t, i }: { t: any; i: number }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Determine if the quote is long enough to warrant a Read More toggle.
+  // We measure by character count (consistent across screen widths — line
+  // counting via the DOM would reflow on resize and cause layout shifts).
+  const isLong = (t.quote?.length || 0) > TESTIMONIAL_READ_MORE_THRESHOLD;
+  const displayQuote = isLong && !expanded
+    ? (t.quote as string).slice(0, TESTIMONIAL_READ_MORE_THRESHOLD).trimEnd() + "…"
+    : t.quote;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.5, delay: i * 0.06 }}
+      // flex flex-col + h-full → card stretches to row height (matches siblings)
+      // items-stretch on the parent grid ensures all cards in a row share height
+      className="flex flex-col h-full bg-white rounded-xl overflow-hidden border border-border/60 shadow-sm hover:shadow-xl transition-shadow"
+    >
+      {/* Navy header — avatar + name + role + rating (fixed-height, flex-shrink-0) */}
+      <div className="bg-[#0A1F44] text-white p-3 flex flex-col items-center text-center flex-shrink-0">
+        <img
+          src={t.avatar}
+          alt={t.name}
+          className="size-12 rounded-full object-cover border-2 border-[#C9A961]/50 mb-2"
+        />
+        <div className="text-[13px] font-semibold leading-tight">{t.name}</div>
+        {t.role && (
+          <div className="text-[10px] text-[#C9A961] mt-0.5 uppercase tracking-wider">{t.role}</div>
+        )}
+        <div className="flex items-center gap-0.5 mt-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <Star
+              key={n}
+              className={`size-2.5 ${n <= t.rating ? "fill-[#C9A961] text-[#A68A3F]" : "text-white/20"}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* White body — quote + footer.
+          flex-1 makes the body grow to fill any extra height so the
+          footer (location · service) sits at the bottom of every card
+          regardless of quote length. flex-col + justify-between keeps
+          the layout balanced. */}
+      <div className="flex-1 flex flex-col p-3 bg-white">
+        <Quote className="size-5 text-[#A68A3F]/20 mb-1 flex-shrink-0" />
+        <p className="text-[12px] text-[#0A1F44] leading-snug font-serif italic flex-1">
+          &ldquo;{displayQuote}&rdquo;
+        </p>
+
+        {/* Read More / Read Less toggle — only renders for long quotes */}
+        {isLong && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setExpanded((v) => !v);
+            }}
+            className="self-start mt-1 text-[10px] font-semibold uppercase tracking-wider text-[#A68A3F] hover:text-[#0A1F44] transition-colors"
+            aria-expanded={expanded}
+          >
+            {expanded ? "Read Less" : "Read More"}
+          </button>
+        )}
+
+        <div className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/40 flex-shrink-0">
+          {t.location}{t.service ? ` · ${t.service}` : ""}
+        </div>
+      </div>
+    </motion.div>
   );
 }
