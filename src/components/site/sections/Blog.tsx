@@ -151,44 +151,21 @@ export function VideoSection() {
         </div>
 
         {/* ════════════════════════════════════════════════════════════════
-            MOBILE: TikTok / Instagram Reels-style horizontal carousel
-            — Full-width 9:16 vertical cards
-            — Horizontal scroll-snap (swipe-friendly)
-            — One card per viewport width (snap-x)
-            — Rounded corners, autoplay-on-visible, muted, loop
+            Unified grid — matches "Latest Listings" card layout EXACTLY.
+            Same grid columns, gap, border-radius, and overall dimensions
+            as the Latest Listings section (FeaturedProperties.tsx):
+              grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6
+            The video frame inside each card keeps the 9:16 vertical
+            aspect ratio, but the CARD itself matches Latest Listings.
+            Works identically on mobile, tablet, and desktop.
             ════════════════════════════════════════════════════════════════ */}
-        <div
-          className="lg:hidden -mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 min-w-0"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mt-12 min-w-0">
           {videos.slice(0, 8).map((video, i) => (
             <ReelsCard
-              key={`m-${video.title}-${i}`}
+              key={`v-${video.title}-${i}`}
               video={video}
               index={i}
               onClick={() => handleVideoClick(video)}
-              variant="mobile"
-            />
-          ))}
-        </div>
-
-        {/* ════════════════════════════════════════════════════════════════
-            DESKTOP: Premium 9:16 portrait grid (3 columns)
-            — Cards have hover-to-autoplay behavior (muted, loop)
-            — Click opens full-screen modal with audio + controls
-            ════════════════════════════════════════════════════════════════ */}
-        <div className="hidden lg:grid grid-cols-3 gap-5 min-w-0">
-          {videos.slice(0, 6).map((video, i) => (
-            <ReelsCard
-              key={`d-${video.title}-${i}`}
-              video={video}
-              index={i}
-              onClick={() => handleVideoClick(video)}
-              variant="desktop"
             />
           ))}
         </div>
@@ -262,40 +239,43 @@ export function VideoSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ReelsCard — single 9:16 vertical video card (TikTok/Instagram-style)
+// ReelsCard — video card with frame matching PropertyCard exactly.
+//   - Outer card frame: bg-white rounded-2xl border shadow + hover lift
+//     (identical to PropertyCard.tsx so video cards visually synchronize
+//     with the Latest Listings cards in the same scroll viewport)
+//   - Video frame inside the card: aspect-[9/16] (vertical Reels-style)
+//     kept inside the card so the overall card dimensions match the
+//     Latest Listings card width / radius / border / gap / grid columns
+//   - Body section under the video: title + advisor (kept compact)
 // ═══════════════════════════════════════════════════════════════════════
 
 interface ReelsCardProps {
   video: any;
   index: number;
   onClick: () => void;
-  variant: "mobile" | "desktop";
 }
 
-function ReelsCard({ video, index, onClick, variant }: ReelsCardProps) {
+function ReelsCard({ video, index, onClick }: ReelsCardProps) {
   const Icon = categoryIcons[video.category] || TrendingUp;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Desktop only: autoplay (muted, loop) when the card is hovered.
-  // Pause when the cursor leaves. Mobile cards show thumbnail only —
-  // tapping opens the full-screen modal with audio + controls.
+  // Autoplay (muted, loop) when the card is hovered. Pause on mouse leave.
+  // Touch devices show the thumbnail + play button; tapping opens the modal.
   useEffect(() => {
-    if (variant !== "desktop") return;
     const v = videoRef.current;
     if (!v || !video.videoUrl) return;
     if (isHovered) {
       v.play().then(() => setIsPlaying(true)).catch(() => {
-        // Autoplay can fail if browser blocks it — keep showing thumbnail
         setIsPlaying(false);
       });
     } else {
       v.pause();
       setIsPlaying(false);
     }
-  }, [isHovered, variant, video.videoUrl]);
+  }, [isHovered, video.videoUrl]);
 
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -305,119 +285,122 @@ function ReelsCard({ video, index, onClick, variant }: ReelsCardProps) {
     setIsMuted(v.muted);
   };
 
-  // Mobile: card width = ~70% of viewport, snap-aligned
-  // Desktop: full width of grid column
-  const cardWidthClass = variant === "mobile"
-    ? "w-[78vw] max-w-[280px] flex-shrink-0"
-    : "w-full";
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
+      transition={{
+        duration: 0.6,
+        delay: Math.min(index * 0.06, 0.4),
+        ease: [0.16, 1, 0.3, 1],
+      }}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group relative ${cardWidthClass} aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer bg-[#1E3A6F] snap-center min-w-0 shadow-lg hover:shadow-2xl transition-shadow duration-300`}
+      // Card frame — IDENTICAL to PropertyCard.tsx so video cards visually
+      // synchronize with the Latest Listings cards (same width, height
+      // behavior, radius, border, shadow, hover lift).
+      className="group relative bg-white rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
     >
-      {/* Thumbnail (always present) — fades out when video is playing on desktop hover */}
-      <img
-        src={video.thumbnail}
-        alt={video.title}
-        loading="lazy"
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-          isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
-        }`}
-      />
-
-      {/* Video element — only renders if videoUrl exists.
-          - Desktop: muted, loop, playsInline — plays on hover
-          - Mobile: preloaded metadata only — plays on tap (modal) */}
-      {video.videoUrl && (
-        <video
-          ref={videoRef}
-          src={video.videoUrl}
-          muted
-          loop
-          playsInline
-          preload="metadata"
+      {/* ───────────────────────────────────────────────────────────────
+          VIDEO SECTION — 9:16 vertical aspect ratio INSIDE the card.
+          Same border-radius inherits from card (rounded-2xl overflow-hidden
+          on parent). Video element + thumbnail both absolute-fill this
+          9:16 container with object-cover so no letterboxing.
+         ─────────────────────────────────────────────────────────────── */}
+      <div className="relative aspect-[9/16] overflow-hidden bg-[#0A1F44]">
+        {/* Thumbnail — fades out when video is playing on hover */}
+        <img
+          src={video.thumbnail}
+          alt={video.title}
+          loading="lazy"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            isPlaying ? "opacity-100" : "opacity-0"
+            isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
           }`}
         />
-      )}
 
-      {/* Gradient overlay — keeps bottom text legible without hiding video content */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/90 via-[#0A1F44]/10 to-[#0A1F44]/40 pointer-events-none" />
+        {/* Video element — muted, loop, playsInline. Plays on hover (desktop). */}
+        {video.videoUrl && (
+          <video
+            ref={videoRef}
+            src={video.videoUrl}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+              isPlaying ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
 
-      {/* Top-left: category badge (gold) */}
-      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md">
-        <span className="text-[9px] sm:text-[10px] text-[#0A1F44] font-bold tracking-wide flex items-center gap-1">
-          <Icon className="size-2.5 sm:size-3" />
-          {video.category}
-        </span>
-      </div>
+        {/* Gradient overlay — keeps overlaid badges/text legible */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/85 via-[#0A1F44]/10 to-[#0A1F44]/30 pointer-events-none" />
 
-      {/* Top-right: duration (mobile) / mute toggle (desktop hover) */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5">
-        <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
-          <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
+        {/* Top-left: category badge (gold) */}
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md">
+          <span className="text-[9px] sm:text-[10px] text-[#0A1F44] font-bold tracking-wide flex items-center gap-1">
+            <Icon className="size-2.5 sm:size-3" />
+            {video.category}
+          </span>
         </div>
-        {/* Desktop hover: mute/unmute toggle (gold accent) */}
-        {variant === "desktop" && video.videoUrl && isPlaying && (
-          <button
-            onClick={toggleMute}
-            className="size-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-[#C9A961] hover:text-[#0A1F44] text-white transition-colors"
-            aria-label={isMuted ? "Unmute video" : "Mute video"}
-            title={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-          </button>
+
+        {/* Top-right: duration pill + (hover) mute toggle */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
+            <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
+          </div>
+          {video.videoUrl && isPlaying && (
+            <button
+              onClick={toggleMute}
+              className="size-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-[#C9A961] hover:text-[#0A1F44] text-white transition-colors"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+            </button>
+          )}
+        </div>
+
+        {/* Center: play button overlay (when not playing) */}
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="size-12 sm:size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
+              <Play className="size-5 sm:size-6 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Center: play button overlay (mobile + desktop-not-playing) */}
-      {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="size-12 sm:size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:bg-[#C9A961] group-hover:border-[#C9A961] transition-all duration-300 group-hover:scale-110">
-            <Play className="size-5 sm:size-6 text-white group-hover:text-[#0A1F44] ml-0.5 transition-colors" fill="currentColor" />
-          </div>
-        </div>
-      )}
-
-      {/* Bottom: title + advisor (kept low to avoid covering video center) */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-        <h3 className="text-white text-xs sm:text-sm font-semibold leading-snug line-clamp-2 mb-2 drop-shadow-md">
+      {/* ───────────────────────────────────────────────────────────────
+          BODY SECTION — mirrors PropertyCard's body padding + layout
+          (p-4 sm:p-5 flex-1 flex flex-col gap-3) so the body of the
+          video card is visually consistent with the Latest Listings card.
+         ─────────────────────────────────────────────────────────────── */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-2.5">
+        {/* Title */}
+        <h3 className="text-sm sm:text-base font-semibold text-[#0A1F44] line-clamp-2 group-hover:text-[#A68A3F] transition-colors leading-snug">
           {video.title}
         </h3>
-        <div className="flex items-center gap-2">
-          {/* Agent avatar (initials on gold disc) */}
-          <div className="size-6 sm:size-7 rounded-full bg-gradient-to-br from-[#C9A961] to-[#A68A3F] flex items-center justify-center text-[#0A1F44] text-[10px] sm:text-xs font-bold flex-shrink-0 ring-2 ring-white/20">
+
+        {/* Advisor row — avatar (initials on gold disc) + name + role */}
+        <div className="flex items-center gap-2 pt-2 border-t border-[#F4F5F7]">
+          <div className="size-7 sm:size-8 rounded-full bg-gradient-to-br from-[#C9A961] to-[#A68A3F] flex items-center justify-center text-[#0A1F44] text-[10px] sm:text-xs font-bold flex-shrink-0 ring-2 ring-white/40">
             {video.advisor?.charAt(0) || "R"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] sm:text-xs text-white font-medium truncate leading-tight">
+            <p className="text-[11px] sm:text-xs text-[#0A1F44] font-medium truncate leading-tight">
               {video.advisor}
             </p>
             {video.role && (
-              <p className="text-[9px] sm:text-[10px] text-white/60 truncate leading-tight mt-0.5">
+              <p className="text-[10px] text-[#6B7280] truncate leading-tight mt-0.5">
                 {video.role}
               </p>
             )}
           </div>
         </div>
       </div>
-
-      {/* Desktop-only: subtle "hover to play" hint that fades on hover */}
-      {variant === "desktop" && video.videoUrl && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
-          <span className="text-[10px] text-white/70 bg-[#0A1F44]/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
-            Hover to play
-          </span>
-        </div>
-      )}
     </motion.div>
   );
 }
