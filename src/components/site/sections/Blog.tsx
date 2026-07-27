@@ -241,25 +241,21 @@ export function VideoSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ReelsCard — video card with PIXEL-PERFECT height match to PropertyCard.
+// ReelsCard — video card with edge-to-edge video filling entire card.
 //
-// Structure mirrors PropertyCard.tsx EXACTLY:
-//   1. Video/image area: aspect-[4/3]  (same as PropertyCard's image area)
-//   2. Body section: p-4 sm:p-5 flex-1 flex flex-col gap-3  (same padding,
-//      same gap, same content element heights as PropertyCard body)
+// Card frame is IDENTICAL to PropertyCard.tsx (same width, border,
+// radius, shadow, hover lift) — card size unchanged.
 //
-// The body section uses `invisible` (visibility:hidden) so it occupies
-// the SAME pixel height as the PropertyCard body (price + title +
-// location + specs + button) — guaranteeing pixel-perfect total card
-// height synchronization with Latest Listings cards.
+// The video fills the ENTIRE card from edge to edge (flex-1 + absolute
+// inset-0 video with object-cover). No white empty space. The video
+// thumbnail/play area is the only content of the card.
 //
-// The video title + agent name are positioned as a BOTTOM OVERLAY on
-// the video itself (absolute positioned at the bottom of the video area
-// with a subtle dark gradient for readability). No separate title area
-// is shown below the video.
+// Title + agent name are positioned as a BOTTOM OVERLAY on the video
+// itself with a subtle dark gradient for readability.
 //
-// The video source keeps its 9:16 aspect ratio and uses object-cover
-// to fill the 4:3 container without letterboxing.
+// The 9:16 video source uses object-cover to fill the card dimensions
+// (which match the Latest Listings card width + the natural height
+// determined by the grid row).
 // ═══════════════════════════════════════════════════════════════════════
 
 interface ReelsCardProps {
@@ -309,26 +305,29 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      // Card frame — IDENTICAL to PropertyCard.tsx (pixel-perfect match).
-      className="group relative bg-white rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
+      // Card frame — IDENTICAL to PropertyCard.tsx (card size unchanged).
+      // flex flex-col + min-h-0 so the video area can flex-1 to fill.
+      className="group relative bg-[#0A1F44] rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
     >
       {/* ═══════════════════════════════════════════════════════════════
-          VIDEO AREA — aspect-[4/3] (same as PropertyCard image area).
-          The 9:16 video source uses object-cover to fill this 4:3
-          container. Title + agent are overlaid at the bottom.
+          VIDEO AREA — fills the ENTIRE card edge to edge.
+          flex-1 + min-h-0 lets the video area grow to fill all
+          available card height. Video + thumbnail both use
+          absolute inset-0 + w-full h-full object-cover so they
+          completely fill the card with no white space.
           ═══════════════════════════════════════════════════════════════ */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A1F44]">
-        {/* Thumbnail — fades out when video plays on hover */}
+      <div className="relative flex-1 min-h-0 overflow-hidden bg-[#0A1F44]">
+        {/* Thumbnail — fills entire card, fades out when video plays */}
         <img
           src={video.thumbnail}
           alt={video.title}
           loading="lazy"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.06]"
+            isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
           }`}
         />
 
-        {/* Video element — 9:16 source, object-cover fills 4:3 container */}
+        {/* Video element — 9:16 source, object-cover fills entire card */}
         {video.videoUrl && (
           <video
             ref={videoRef}
@@ -344,7 +343,7 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
         )}
 
         {/* Subtle dark gradient at bottom for title readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/90 via-[#0A1F44]/15 to-[#0A1F44]/20 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44]/90 via-[#0A1F44]/10 to-[#0A1F44]/15 pointer-events-none" />
 
         {/* Top-left: category badge (gold) */}
         <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C9A961] shadow-md z-10">
@@ -382,8 +381,8 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
 
         {/* ═══════════════════════════════════════════════════════════════
             BOTTOM OVERLAY — title + agent name ON the video itself.
-            Positioned at the bottom of the video area with the dark
-            gradient above for readability. No separate body section.
+            Positioned at the bottom of the card with the dark gradient
+            above for readability.
             ═══════════════════════════════════════════════════════════════ */}
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-10">
           {/* Title — elegant, 2-line clamp, white with drop shadow */}
@@ -399,46 +398,6 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
               {video.advisor}
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          HIDDEN BODY SECTION — pixel-perfect height matcher.
-          Uses `invisible` (visibility:hidden → still occupies space)
-          so this card has the EXACT SAME total height as the Latest
-          Listings PropertyCard. The body structure mirrors
-          PropertyCard.tsx identically:
-            - p-4 sm:p-5  (same padding)
-            - flex flex-col gap-3  (same gap)
-            - Price-sized text  (text-[22px] sm:text-2xl font-bold)
-            - Title-sized text  (text-sm sm:text-base font-semibold)
-            - Location-sized text  (text-xs)
-            - Specs row  (pt-3 border-t text-xs)
-            - Button  (h-10 sm:h-11 rounded-lg)
-          All content is invisible — it exists ONLY to guarantee the
-          card height matches the Latest Listings card pixel-for-pixel.
-          ═══════════════════════════════════════════════════════════════ */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3 invisible" aria-hidden="true">
-        {/* Price-sized spacer */}
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[22px] sm:text-2xl font-bold text-[#0A1F44] leading-none font-serif">AED 0</span>
-          <span className="text-[11px] text-[#9CA3AF] whitespace-nowrap font-medium">AED 0/sqft</span>
-        </div>
-        {/* Title-sized spacer */}
-        <h3 className="text-sm sm:text-base font-semibold text-[#0A1F44] line-clamp-1 leading-snug">Property title spacer</h3>
-        {/* Location-sized spacer */}
-        <p className="text-xs flex items-center gap-1.5 text-[#6B7280]">
-          <span className="truncate">Community spacer</span>
-        </p>
-        {/* Specs-sized spacer */}
-        <div className="flex items-center gap-3 sm:gap-4 pt-3 text-[#0A1F44] text-xs border-t border-[#F4F5F7]">
-          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">Beds</span></span>
-          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">Baths</span></span>
-          <span className="flex items-center gap-1.5"><span className="font-semibold">0</span><span className="text-[#9CA3AF] text-[11px]">sqft</span></span>
-        </div>
-        {/* Button-sized spacer */}
-        <div className="mt-auto inline-flex items-center justify-center gap-1.5 w-full h-10 sm:h-11 rounded-lg bg-[#0A1F44] text-white text-xs sm:text-sm font-semibold">
-          View Property
         </div>
       </div>
     </motion.div>
