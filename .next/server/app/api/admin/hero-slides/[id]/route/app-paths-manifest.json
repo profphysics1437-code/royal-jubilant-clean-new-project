@@ -1,0 +1,3 @@
+{
+  "/api/admin/hero-slides/[id]/route": "app/api/admin/hero-slides/[id]/route.js"
+}
