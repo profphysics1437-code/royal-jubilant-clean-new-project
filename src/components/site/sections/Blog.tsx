@@ -93,6 +93,47 @@ export function VideoSection() {
   const { data } = useApi<{ videos: any[] }>("/api/public/videos", { videos: advisorVideos });
   const videos = data?.videos || advisorVideos;
 
+  // ── Mobile scroll-based auto-play ───────────────────────────────────
+  // Tracks which video card is most-visible in the viewport. Only ONE
+  // card plays at a time (the most-visible one). Desktop uses hover
+  // instead (handled inside ReelsCard — this state is ignored on desktop).
+  const [activeMobileIndex, setActiveMobileIndex] = useState<number | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ratiosRef = useRef<Record<number, number>>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Only enable scroll-based auto-play on mobile/tablet (< lg = 1024px)
+    const mq = window.matchMedia("(max-width: 1023px)");
+    if (!mq.matches) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const idx = Number((entry.target as HTMLElement).dataset.cardIndex);
+          ratiosRef.current[idx] = entry.intersectionRatio;
+        });
+        // Find the card with the highest intersection ratio (> 0.5 threshold)
+        let bestIdx: number | null = null;
+        let bestRatio = 0;
+        Object.entries(ratiosRef.current).forEach(([idx, ratio]) => {
+          if (ratio > bestRatio && ratio > 0.5) {
+            bestRatio = ratio;
+            bestIdx = Number(idx);
+          }
+        });
+        setActiveMobileIndex(bestIdx);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+
+    cardRefs.current.forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [videos.length]);
+
   const handleVideoClick = (video: any) => {
     // If the video has an actual video URL, open the full-screen modal.
     // Otherwise, no-op (the card already shows the thumbnail + metadata).
@@ -171,6 +212,8 @@ export function VideoSection() {
               video={video}
               index={i}
               onClick={() => handleVideoClick(video)}
+              isActiveMobile={activeMobileIndex === i}
+              cardRef={(el) => { cardRefs.current[i] = el; }}
             />
           ))}
         </div>
@@ -269,20 +312,20 @@ interface ReelsCardProps {
   video: any;
   index: number;
   onClick: () => void;
+  /** True when this card is the most-visible card in the viewport on mobile. */
+  isActiveMobile: boolean;
+  /** Callback ref so the parent IntersectionObserver can observe this card. */
+  cardRef: (el: HTMLDivElement | null) => void;
 }
 
-function ReelsCard({ video, index, onClick }: ReelsCardProps) {
+function ReelsCard({ video, index, onClick, isActiveMobile, cardRef }: ReelsCardProps) {
   const Icon = categoryIcons[video.category] || TrendingUp;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  // isTapped = mobile user has tapped the card to start inline playback.
-  // Once tapped, the video plays in-place (muted, loop) until tapped again.
-  const [isTapped, setIsTapped] = useState(false);
 
-  // ── Desktop: autoplay (muted, loop) on hover ──────────────────────────
-  // Mobile hover is unreliable / doesn't exist — mobile uses tap instead.
+  // ── Desktop: autoplay (muted, loop) on hover — UNCHANGED ─────────────
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !video.videoUrl) return;
@@ -290,42 +333,51 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
       v.play().then(() => setIsPlaying(true)).catch(() => {
         setIsPlaying(false);
       });
-    } else if (!isTapped) {
-      // Only pause on mouse-leave if the mobile tap state hasn't been
-      // activated (prevents desktop hover from fighting with tap state).
+    } else {
       v.pause();
       setIsPlaying(false);
     }
-  }, [isHovered, isTapped, video.videoUrl]);
+  }, [isHovered, video.videoUrl]);
 
-  // ── Mobile: tap to play/pause inline ──────────────────────────────────
-  // Tapping the card toggles inline video playback (muted, loop).
-  // If the video has no videoUrl, the tap falls through to onClick
-  // (which opens the modal — but in our case all cards with videoUrl
-  // use tap-to-play inline instead of opening the modal).
+  // ── Mobile: scroll-based auto-play — NEW ─────────────────────────────
+  // When this card becomes the most-visible card in the viewport (mobile
+  // only, < 1024px), auto-play muted. When it leaves the active viewport,
+  // pause. Only ONE card plays at a time (parent tracks activeMobileIndex).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !video.videoUrl) return;
+    // Only apply scroll-based behavior on mobile/tablet (< lg = 1024px)
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) return;
+
+    if (isActiveMobile) {
+      v.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      v.pause();
+      setIsPlaying(false);
+    }
+  }, [isActiveMobile, video.videoUrl]);
+
+  // ── Click handler — desktop: inline play/pause, mobile: open modal ───
   const handleCardTap = (e: React.MouseEvent) => {
     if (!video.videoUrl) {
-      // No video URL — fall through to the parent onClick (opens modal
-      // or no-op). This case shouldn't normally happen since cards
-      // without videoUrl just show the thumbnail.
       onClick();
       return;
     }
+    // On mobile, tap opens the full-screen modal (premium pattern —
+    // scroll auto-plays muted, tap opens with audio + controls).
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      onClick();
+      return;
+    }
+    // Desktop: inline play/pause toggle (existing behavior — unchanged)
     e.stopPropagation();
     const v = videoRef.current;
     if (!v) return;
-    if (isTapped) {
-      // Second tap → pause
+    if (isPlaying) {
       v.pause();
       setIsPlaying(false);
-      setIsTapped(false);
     } else {
-      // First tap → play (muted, loop)
-      v.play().then(() => {
-        setIsPlaying(true);
-        setIsTapped(true);
-      }).catch(() => {
-        // If play fails (e.g. browser blocks), open the modal instead
+      v.play().then(() => setIsPlaying(true)).catch(() => {
         onClick();
       });
     }
@@ -341,6 +393,8 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
 
   return (
     <motion.div
+      ref={cardRef}
+      data-card-index={index}
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
@@ -349,14 +403,17 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
         delay: Math.min(index * 0.06, 0.4),
         ease: [0.16, 1, 0.3, 1],
       }}
-      // Tap handler covers mobile (and desktop click as fallback).
-      // Desktop hover is handled by onMouseEnter/onMouseLeave below.
       onClick={handleCardTap}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       // Card frame — IDENTICAL to PropertyCard.tsx (card size unchanged).
-      // flex flex-col so the video area can grow to fill the card.
-      className="group relative bg-[#0A1F44] rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-[0_2px_12px_rgba(10,31,68,0.04)] transition-all duration-300 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0"
+      // When active on mobile: subtle gold ring + elevated shadow (premium).
+      // Desktop hover behavior unchanged (hover:shadow + hover:border + hover:-translate-y-1).
+      className={`group relative bg-[#0A1F44] rounded-2xl overflow-hidden border border-[#E5E7EB] transition-all duration-500 hover:shadow-[0_18px_50px_rgba(10,31,68,0.15)] hover:border-[#C9A961]/40 hover:-translate-y-1 flex flex-col cursor-pointer min-w-0 ${
+        isActiveMobile
+          ? "ring-2 ring-[#C9A961]/50 shadow-[0_18px_50px_rgba(10,31,68,0.25)]"
+          : "shadow-[0_2px_12px_rgba(10,31,68,0.04)]"
+      }`}
     >
       {/* ═══════════════════════════════════════════════════════════════
           VIDEO AREA — fills the ENTIRE card edge to edge.
@@ -405,11 +462,8 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
           </span>
         </div>
 
-        {/* Top-right: duration pill + mute toggle (visible when playing) */}
+        {/* Top-right: mute toggle only (duration pill removed per user request) */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-          <div className="px-2 py-1 rounded-md bg-[#0A1F44]/80 backdrop-blur-sm">
-            <span className="text-[9px] sm:text-[10px] text-white font-medium">{video.duration}</span>
-          </div>
           {video.videoUrl && isPlaying && (
             <button
               onClick={toggleMute}
@@ -464,16 +518,6 @@ function ReelsCard({ video, index, onClick }: ReelsCardProps) {
             </span>
           </div>
         </div>
-
-        {/* Mobile tap hint — briefly shown when video is playing on mobile
-            to indicate 'tap again to pause'. Auto-hides via opacity. */}
-        {isTapped && (
-          <div className="sm:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-            <span className="text-[10px] text-white/80 bg-[#0A1F44]/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              Tap to pause
-            </span>
-          </div>
-        )}
       </div>
     </motion.div>
   );
