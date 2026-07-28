@@ -44,8 +44,8 @@ import { PropertyCard } from "@/components/site/PropertyCard";
 export function PropertyDetailModal() {
   const { activePropertyId, closeProperty, openAgent, openCommunity, toggleSavedProperty, isSaved, setMortgageOpen, openLeadForm } = useStore();
   // Fetch DB properties; fall back to mock data while loading
-  const { data } = useApi<{ properties: any[] }>("/api/public/properties?limit=0", { properties: fallbackProperties });
-  const properties: any[] = data?.properties || fallbackProperties;
+  const { data } = useApi<{ properties: any[] }>("/api/public/properties?limit=0", { properties: [] });
+  const properties: any[] = data?.properties || [];
   const property = properties.find((p) => p.id === activePropertyId);
   const [activeImg, setActiveImg] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);

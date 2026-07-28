@@ -3,15 +3,15 @@
 import { motion, useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { properties as fallbackProperties } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 
-// Fallback counts (from mock data)
-const fbRent = fallbackProperties.filter((p) => p.status === "rent").length;
-const fbBuy = fallbackProperties.filter((p) => p.status === "sale").length;
-const fbCommercial = fallbackProperties.filter((p) => p.status === "commercial").length;
-const fbOffPlan = fallbackProperties.filter((p) => p.status === "off-plan" || p.completionStatus === "Off-Plan").length;
-const fbHoliday = fallbackProperties.filter((p) => p.status === "rent" && p.furnished).length;
+// Fallback counts — all 0 (no mock data shown on first render; real
+// counts come from /api/public/listings once the API responds)
+const fbRent = 0;
+const fbBuy = 0;
+const fbCommercial = 0;
+const fbOffPlan = 0;
+const fbHoliday = 0;
 
 const services = [
   {

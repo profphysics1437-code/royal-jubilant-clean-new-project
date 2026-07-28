@@ -31,8 +31,8 @@ export function DashboardModal() {
   const [mode, setMode] = useState<"login" | "register">("login");
 
   // Fetch from DB (with fallback so UI renders instantly)
-  const { data: propData } = useApi<{ properties: any[] }>("/api/public/properties?limit=0", { properties: fallbackProperties });
-  const properties: any[] = propData?.properties || fallbackProperties;
+  const { data: propData } = useApi<{ properties: any[] }>("/api/public/properties?limit=0", { properties: [] });
+  const properties: any[] = propData?.properties || [];
   const { data: agentData } = useApi<{ agents: any[] }>("/api/public/agents", { agents: fallbackAgents });
   const agents: any[] = agentData?.agents || fallbackAgents;
 

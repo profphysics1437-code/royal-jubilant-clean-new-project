@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MapPin, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { communities as fallbackCommunities, properties as fallbackProperties } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 
 const fallbackSlides = [
@@ -24,8 +23,8 @@ export function Hero() {
   const [purpose, setPurpose] = useState<"rent" | "buy">("rent");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { data: commData } = useApi<{ communities: any[] }>("/api/public/communities", { communities: fallbackCommunities });
-  const communities = commData?.communities || fallbackCommunities;
+  const { data: commData } = useApi<{ communities: any[] }>("/api/public/communities", { communities: [] });
+  const communities = commData?.communities || [];
 
   useEffect(() => {
     fetch("/api/public/hero-slides").then((r) => r.json()).then((d) => { if (d.slides && d.slides.length > 0) setSlides(d.slides); }).catch(() => {});

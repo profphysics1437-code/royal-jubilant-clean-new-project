@@ -20,8 +20,8 @@ function getPropertyHref(p: any): string {
 
 export function FeaturedProperties() {
   const { setActiveView } = useStore();
-  const { data, loading } = useApi<{ properties: any[] }>("/api/public/properties?featured=1&limit=8", { properties: fallbackProperties.filter((p) => p.featured).slice(0, 8) });
-  const featured = (data?.properties || fallbackProperties.filter((p) => p.featured).slice(0, 8));
+  const { data, loading } = useApi<{ properties: any[] }>("/api/public/properties?featured=1&limit=8", { properties: [] });
+  const featured = data?.properties || [];
 
   return (
     <section id="featured" className="py-20 lg:py-28 bg-[#F9FAFB]">
@@ -56,8 +56,8 @@ export function FeaturedProperties() {
 
 export function LatestProperties() {
   const { setActiveView } = useStore();
-  const { data } = useApi<{ properties: any[] }>("/api/public/properties?latest=1&limit=4&sort=newest", { properties: fallbackProperties.filter((p) => p.isLatest).slice(0, 4) });
-  const latest = data?.properties || fallbackProperties.filter((p) => p.isLatest).slice(0, 4);
+  const { data } = useApi<{ properties: any[] }>("/api/public/properties?latest=1&limit=4&sort=newest", { properties: [] });
+  const latest = data?.properties || [];
 
   return (
     <section className="py-20 lg:py-28 bg-white">
@@ -81,8 +81,8 @@ export function LatestProperties() {
 
 export function LuxuryCollection() {
   const { setActiveView } = useStore();
-  const { data } = useApi<{ properties: any[] }>("/api/public/properties?luxury=1&limit=3", { properties: fallbackProperties.filter((p) => p.isLuxury).slice(0, 3) });
-  const luxury = data?.properties || fallbackProperties.filter((p) => p.isLuxury).slice(0, 3);
+  const { data } = useApi<{ properties: any[] }>("/api/public/properties?luxury=1&limit=3", { properties: [] });
+  const luxury = data?.properties || [];
 
   return (
     <section className="py-20 lg:py-28 bg-royal-gradient text-white relative overflow-hidden">

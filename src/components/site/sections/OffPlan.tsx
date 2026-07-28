@@ -2,16 +2,14 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, HardHat, Calendar, Building2, MapPin, Check } from "lucide-react";
-import { properties as fallbackProperties } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { useApi } from "@/lib/useApi";
 import { SectionHeader } from "./FeaturedProperties";
 
 export function OffPlanProjects() {
   const { openProperty } = useStore();
-  const fallback = fallbackProperties.filter((p) => p.status === "off-plan" || p.completionStatus === "Off-Plan").slice(0, 4);
-  const { data } = useApi<{ properties: any[] }>("/api/public/properties?status=off-plan&limit=4", { properties: fallback });
-  const offPlan = data?.properties || fallback;
+  const { data } = useApi<{ properties: any[] }>("/api/public/properties?status=off-plan&limit=4", { properties: [] });
+  const offPlan = data?.properties || [];
 
   return (
     <section className="py-20 lg:py-28 bg-white">

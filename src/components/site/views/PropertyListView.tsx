@@ -139,8 +139,8 @@ export function PropertyListView({ filter, title, subtitle }: Props) {
   const { locationNames: communityOptions } = useLocations();
 
   // Fetch properties from DB (falls back to mock data while loading or on error)
-  const { data } = useApi<{ properties: Property[] }>("/api/public/properties?limit=0", { properties: fallbackProperties });
-  const properties: Property[] = data?.properties || fallbackProperties;
+  const { data } = useApi<{ properties: Property[] }>("/api/public/properties?limit=0", { properties: [] });
+  const properties: Property[] = data?.properties || [];
 
   // Filters — default to "rent" since Rent is our trademark
   const [department, setDepartment] = useState<"sale" | "rent">(
