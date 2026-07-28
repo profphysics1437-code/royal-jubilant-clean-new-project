@@ -407,6 +407,11 @@ export function AboutView() {
 
 export function ContactView() {
   const { setActiveView } = useStore();
+  const { get } = useSiteSettings();
+  const phone = get("company.phone", "+971 4 327 8401");
+  const whatsapp = get("company.whatsapp", "971524942329");
+  const email = get("company.email", "info@royaljubilant.ae");
+  const address = get("company.address", "13th Floor, Office #54, Burjuman Business Tower, Dubai, UAE");
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <div className="bg-royal-gradient-diagonal text-white py-16 lg:py-20">
@@ -434,9 +439,9 @@ export function ContactView() {
             <div className="bg-white rounded-3xl p-6 border border-border/60">
               <h3 className="text-xs tracking-luxury uppercase text-[#A68A3F] font-semibold mb-3">Head Office — Dubai</h3>
               <div className="space-y-2 text-sm text-[#0A1F44]">
-                <p className="flex items-start gap-2"><MapPin className="size-4 text-[#A68A3F] mt-0.5" /> 13th Floor, Office #54<br />Burjuman Business Tower<br />Dubai, United Arab Emirates</p>
-                <p className="flex items-center gap-2"><Star className="size-4 text-[#A68A3F]" /> +971 4 327 8401</p>
-                <p className="flex items-center gap-2"><Star className="size-4 text-[#A68A3F]" /> info@royaljubilant.ae</p>
+                <p className="flex items-start gap-2"><MapPin className="size-4 text-[#A68A3F] mt-0.5" /> {address.split(", ").map((line, i, arr) => i === arr.length - 1 ? <span key={i}>{line}</span> : <span key={i}>{line}<br /></span>)}</p>
+                <p className="flex items-center gap-2"><Star className="size-4 text-[#A68A3F]" /> {phone}</p>
+                <p className="flex items-center gap-2"><Star className="size-4 text-[#A68A3F]" /> {email}</p>
               </div>
               <div className="mt-4 pt-4 border-t border-border/60 flex gap-2">
                 <span className="text-[10px] tracking-luxury uppercase text-muted-foreground self-center mr-1">Follow</span>
@@ -450,8 +455,8 @@ export function ContactView() {
               <h3 className="text-xs tracking-luxury uppercase text-[#A68A3F] font-semibold mb-3">Speak to an Advisor</h3>
               <p className="text-sm text-white/70 mb-4">A senior RERA-certified consultant is on call to help you.</p>
               <div className="space-y-2 text-sm">
-                <p>📞 +971 4 327 8401</p>
-                <p>💬 WhatsApp +971 4 327 8401</p>
+                <p>📞 {phone}</p>
+                <p>💬 WhatsApp {phone}</p>
                 <p>🌐 English · Urdu · Arabic · Hindi · Pashto · Punjabi</p>
               </div>
             </div>

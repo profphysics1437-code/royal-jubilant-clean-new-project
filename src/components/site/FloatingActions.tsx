@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { MessageCircle, Phone, Calculator, Heart, X, Calendar } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useSiteSettings } from "@/lib/useSiteSettings";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function FloatingActions() {
   const [open, setOpen] = useState(false);
   const { setMortgageOpen, setValuationOpen, savedProperties } = useStore();
+  const { get } = useSiteSettings();
+  const phone = get("company.phone", "+971 4 327 8401");
+  const whatsapp = get("company.whatsapp", "971524942329");
 
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
@@ -48,7 +52,7 @@ export function FloatingActions() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ delay: 0.1 }}
-              onClick={() => window.open("tel:+971524942329", "_self")}
+              onClick={() => window.open(`tel:${phone}`, "_self")}
               className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white shadow-lg border border-border text-sm font-medium text-[#0A1F44] hover:bg-[#F9FAFB]"
             >
               <Phone className="size-4 text-[#A68A3F]" />
@@ -60,7 +64,7 @@ export function FloatingActions() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ delay: 0.15 }}
-              href="https://wa.me/971524942329"
+              href={`https://wa.me/${whatsapp}`}
               target="_blank"
               className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#25D366] shadow-lg text-sm font-medium text-white hover:bg-[#1faa50]"
             >
