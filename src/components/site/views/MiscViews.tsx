@@ -172,8 +172,10 @@ export function BlogView() {
   const { data } = useApi<{ posts: any[] }>("/api/public/blog", { posts: [] });
   // Merge DB posts with custom blog files from the registry
   const dbPosts = data?.posts || [];
-  const customPosts = getAllCustomBlogMetadata().map((m) => ({
+  const customMeta = getAllCustomBlogMetadata();
+  const customPosts = customMeta.map((m) => ({
     id: m.slug,
+    slug: m.slug, // Use the registry's exact slug for URL generation
     title: m.title,
     excerpt: m.excerpt,
     category: m.category,
@@ -202,7 +204,7 @@ export function BlogView() {
       </div>
       <div className="container mx-auto px-4 lg:px-6 py-12">
         {/* Featured article */}
-        <Link href={`/market-insights/${slugify(blogPosts[0].title)}`}>
+        <Link href={`/market-insights/${blogPosts[0].slug || slugify(blogPosts[0].title)}`}>
           <motion.article
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -230,7 +232,7 @@ export function BlogView() {
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
           {blogPosts.slice(1).map((post, i) => (
-            <Link key={post.id} href={`/market-insights/${slugify(post.title)}`}>
+            <Link key={post.id} href={`/market-insights/${post.slug || slugify(post.title)}`}>
               <motion.article
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
