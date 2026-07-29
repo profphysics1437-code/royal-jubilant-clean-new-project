@@ -2,10 +2,11 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, ArrowRight, Calendar, Clock, ChevronRight, Phone, MessageCircle, Mail, Printer, ArrowUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Clock, ChevronRight, Phone, MessageCircle, Mail } from "lucide-react";
 import { ShareButton } from "@/components/site/ShareButton";
 import { BlogReadingProgress } from "@/components/site/BlogReadingProgress";
 import { BlogNewsletterCTA } from "@/components/site/BlogNewsletterCTA";
+import { BlogActions, BackToTopButton } from "@/components/site/BlogActions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -232,18 +233,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
               <div className="space-y-2">
                 <p className="text-[10px] uppercase tracking-luxury text-[#9CA3AF] font-semibold mb-2">Share</p>
                 <ShareButton title={post.title} description={post.excerpt} size="sm" />
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-2 text-xs text-[#6B7280] hover:text-[#A68A3F] transition-colors mt-2"
-                >
-                  <Printer className="size-3.5" /> Print article
-                </button>
-                <Link
-                  href="/#/blog"
-                  className="flex items-center gap-2 text-xs text-[#6B7280] hover:text-[#A68A3F] transition-colors"
-                >
-                  <ArrowLeft className="size-3.5" /> All articles
-                </Link>
+                <BlogActions />
               </div>
             </div>
           </aside>
@@ -279,12 +269,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
                 <span className="text-xs uppercase tracking-luxury text-[#9CA3AF] font-semibold">Share</span>
                 <ShareButton title={post.title} description={post.excerpt} size="sm" />
               </div>
-              <button
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#A68A3F] transition-colors"
-              >
-                <ArrowUp className="size-3.5" /> Back to top
-              </button>
+              <BackToTopButton />
             </div>
 
             {/* Prev / Next navigation */}
