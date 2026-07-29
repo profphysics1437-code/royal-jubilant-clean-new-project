@@ -14,6 +14,7 @@ import {
 } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { useApi } from "@/lib/useApi";
+import { getAllCustomBlogMetadata } from "@/content/blog/registry";
 import { useSiteSettings } from "@/lib/useSiteSettings";
 import { Agents as AgentsSection } from "@/components/site/sections/Agents";
 import { PropertyCard } from "@/components/site/PropertyCard";
@@ -169,7 +170,23 @@ function slugify(text: string): string {
 export function BlogView() {
   const { setActiveView } = useStore();
   const { data } = useApi<{ posts: any[] }>("/api/public/blog", { posts: [] });
-  const blogPosts = data?.posts || [];
+  // Merge DB posts with custom blog files from the registry
+  const dbPosts = data?.posts || [];
+  const customPosts = getAllCustomBlogMetadata().map((m) => ({
+    id: m.slug,
+    title: m.title,
+    excerpt: m.excerpt,
+    category: m.category,
+    date: m.date,
+    readTime: m.readTime,
+    authorName: m.authorName,
+    image: m.image,
+  }));
+  // Custom posts first, then DB posts (dedup by title)
+  const blogPosts = [
+    ...customPosts,
+    ...dbPosts.filter((dp) => !customPosts.some((cp) => cp.title === dp.title)),
+  ];
   if (blogPosts.length === 0) return null;
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
