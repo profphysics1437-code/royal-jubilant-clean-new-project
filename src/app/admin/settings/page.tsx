@@ -57,6 +57,14 @@ export default function AdminSettings() {
         }),
       });
       if (!res.ok) throw new Error();
+      // Bust the site settings localStorage cache so all components
+      // (Footer, Navbar, FloatingActions, ContactView, etc.) re-fetch
+      // fresh data on next page load — including updated WhatsApp number.
+      try {
+        const cur = parseInt(localStorage.getItem("siteSettingsVersion") || "0", 10);
+        localStorage.setItem("siteSettingsVersion", String(cur + 1));
+        localStorage.removeItem("siteSettingsCache");
+      } catch {}
       toast.success("Settings saved — changes apply instantly on the website.");
     } catch {
       toast.error("Failed to save settings");
