@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Share2, Copy, Check, Twitter, Facebook, Mail, MessageCircle, Link2 } from "lucide-react";
+import { Share2, Copy, Check, Twitter as XIcon, Facebook, Mail, MessageCircle, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
  *   1. On supported devices (mobile / some desktop browsers), calls the
  *      native Web Share API — gives the user the OS share sheet.
  *   2. Fallback (desktop without Web Share, or API fails): shows a premium
- *      dropdown with copy-link + Twitter / Facebook / WhatsApp / Email
+ *      dropdown with copy-link + X / Facebook / WhatsApp / Email
  *      options.
  *
  * The shared URL is always the current browser URL (window.location.href),
@@ -110,8 +110,8 @@ export function ShareButton({ title, description, className = "", size = "md" }:
       external: true,
     },
     {
-      label: "Twitter / X",
-      icon: <Twitter className="size-4 text-[#1DA1F2]" />,
+      label: "X",
+      icon: <XIcon className="size-4 text-black" />,
       href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
       external: true,
     },
