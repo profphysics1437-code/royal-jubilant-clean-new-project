@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { ArrowLeft, MapPin, Star, TrendingUp, ArrowRight, Building2, ShieldCheck, Tag, Award, X, Play } from "lucide-react";
 import {
   communities as fallbackCommunities,
@@ -155,10 +156,20 @@ export function DevelopersView() {
   );
 }
 
+/** Generate a URL-friendly slug from a title string. */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function BlogView() {
   const { setActiveView } = useStore();
-  const { data } = useApi<{ posts: any[] }>("/api/public/blog", { posts: fallbackBlogPosts });
-  const blogPosts = data?.posts || fallbackBlogPosts;
+  const { data } = useApi<{ posts: any[] }>("/api/public/blog", { posts: [] });
+  const blogPosts = data?.posts || [];
   if (blogPosts.length === 0) return null;
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -174,54 +185,57 @@ export function BlogView() {
       </div>
       <div className="container mx-auto px-4 lg:px-6 py-12">
         {/* Featured article */}
-        <motion.article
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 cursor-pointer group bg-white rounded-3xl overflow-hidden border border-border/60 lift-on-hover"
-        >
-          <div className="aspect-[16/10] overflow-hidden bg-muted">
-            <img src={blogPosts[0].image} alt={blogPosts[0].title} className="w-full h-full object-cover zoom-img" />
-          </div>
-          <div className="p-8 lg:p-10 flex flex-col justify-center">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
-              <span className="px-2.5 py-1 rounded-full bg-[#C9A961]/15 text-[#A68A3F] font-medium">{blogPosts[0].category}</span>
-              <span>{blogPosts[0].readTime}</span>
-              <span>·</span>
-              <span>{new Date(blogPosts[0].date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+        <Link href={`/market-insights/${slugify(blogPosts[0].title)}`}>
+          <motion.article
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 cursor-pointer group bg-white rounded-3xl overflow-hidden border border-border/60 lift-on-hover"
+          >
+            <div className="aspect-[16/10] overflow-hidden bg-muted">
+              <img src={blogPosts[0].image} alt={blogPosts[0].title} className="w-full h-full object-cover zoom-img" />
             </div>
-            <h2 className="font-serif text-2xl lg:text-3xl font-medium text-[#0A1F44] leading-tight group-hover:text-[#A68A3F] transition-colors mb-4">
-              {blogPosts[0].title}
-            </h2>
-            <p className="text-muted-foreground leading-relaxed mb-5">{blogPosts[0].excerpt}</p>
-            <div className="text-sm text-[#A68A3F] font-medium">By {(blogPosts[0] as any).author || (blogPosts[0] as any).authorName}</div>
-          </div>
-        </motion.article>
+            <div className="p-8 lg:p-10 flex flex-col justify-center">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+                <span className="px-2.5 py-1 rounded-full bg-[#C9A961]/15 text-[#A68A3F] font-medium">{blogPosts[0].category}</span>
+                <span>{blogPosts[0].readTime}</span>
+                <span>·</span>
+                <span>{new Date(blogPosts[0].date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+              </div>
+              <h2 className="font-serif text-2xl lg:text-3xl font-medium text-[#0A1F44] leading-tight group-hover:text-[#A68A3F] transition-colors mb-4">
+                {blogPosts[0].title}
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-5">{blogPosts[0].excerpt}</p>
+              <div className="text-sm text-[#A68A3F] font-medium">By {(blogPosts[0] as any).author || (blogPosts[0] as any).authorName}</div>
+            </div>
+          </motion.article>
+        </Link>
 
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
           {blogPosts.slice(1).map((post, i) => (
-            <motion.article
-              key={post.id}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: i * 0.08 }}
-              className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-border/60 lift-on-hover"
-            >
-              <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-                <img src={post.image} alt={post.title} className="w-full h-full object-cover zoom-img" />
-                <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md glass text-[10px] tracking-luxury uppercase font-medium text-[#0A1F44]">{post.category}</span>
-              </div>
-              <div className="p-5">
-                <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-3">
-                  <span>{post.readTime}</span>
-                  <span>·</span>
-                  <span>{new Date(post.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+            <Link key={post.id} href={`/market-insights/${slugify(post.title)}`}>
+              <motion.article
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: i * 0.08 }}
+                className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-border/60 lift-on-hover h-full"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                  <img src={post.image} alt={post.title} className="w-full h-full object-cover zoom-img" />
+                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md glass text-[10px] tracking-luxury uppercase font-medium text-[#0A1F44]">{post.category}</span>
                 </div>
-                <h3 className="font-serif text-lg font-medium text-[#0A1F44] leading-tight line-clamp-2 group-hover:text-[#A68A3F] transition-colors">{post.title}</h3>
-                <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{post.excerpt}</p>
-                <div className="text-xs text-[#A68A3F] font-medium mt-3">By {(post as any).author || (post as any).authorName}</div>
-              </div>
-            </motion.article>
+                <div className="p-5">
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-3">
+                    <span>{post.readTime}</span>
+                    <span>·</span>
+                    <span>{new Date(post.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  </div>
+                  <h3 className="font-serif text-lg font-medium text-[#0A1F44] leading-tight line-clamp-2 group-hover:text-[#A68A3F] transition-colors">{post.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{post.excerpt}</p>
+                  <div className="text-xs text-[#A68A3F] font-medium mt-3">By {(post as any).author || (post as any).authorName}</div>
+                </div>
+              </motion.article>
+            </Link>
           ))}
         </div>
       </div>
