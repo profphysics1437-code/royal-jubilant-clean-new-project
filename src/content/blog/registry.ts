@@ -17,6 +17,7 @@
 
 import type { ComponentType } from "react";
 import PalmJumeirahVillaPrices2026, { metadata as palmMetadata } from "./palm-jumeirah-villa-prices-2026";
+import UAEGoldenVisaGuide, { metadata as goldenVisaMetadata } from "./uae-property-golden-visa-aed-2-million-guide";
 
 export interface BlogMetadata {
   slug: string;
@@ -39,6 +40,10 @@ export const CUSTOM_BLOGS: CustomBlog[] = [
   {
     metadata: palmMetadata,
     Component: PalmJumeirahVillaPrices2026,
+  },
+  {
+    metadata: goldenVisaMetadata,
+    Component: UAEGoldenVisaGuide,
   },
 ];
 
