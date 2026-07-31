@@ -129,7 +129,11 @@ export function ExploreProperty() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.5, delay: i * 0.06 }}
-              onClick={() => setActiveView(service.view)}
+              onClick={() => {
+                if (service.view === "rent") window.location.href = "/rent";
+                else if (service.view === "buy") window.location.href = "/sale";
+                else setActiveView(service.view);
+              }}
               className="group relative aspect-[3/4] rounded-lg overflow-hidden bg-[#F4F5F7] cursor-pointer"
             >
               {/* Image */}

@@ -35,7 +35,7 @@ export function Footer() {
   const facebook = get("social.facebook", "https://www.facebook.com/profile.php?id=100077096168331");
 
   // Parse the 4 footer link columns from site settings (with hardcoded fallbacks)
-  const parseCol = (key: string, fallbackTitle: string, fallbackLinks: { label: string; view: string }[]) => {
+  const parseCol = (key: string, fallbackTitle: string, fallbackLinks: { label: string; view?: string; url?: string }[]) => {
     const raw = get(key, "");
     if (!raw) return { title: fallbackTitle, links: fallbackLinks };
     try {
@@ -47,12 +47,12 @@ export function Footer() {
   };
 
   const col1 = parseCol("footer.col1", "Buy & Rent", [
-    { label: "Properties for Rent", view: "rent" },
-    { label: "Properties for Sale", view: "buy" },
+    { label: "Properties for Rent", url: "/rent" },
+    { label: "Properties for Sale", url: "/sale" },
     { label: "Commercial Real Estate", view: "commercial" },
     { label: "Off-Plan Projects", view: "off-plan" },
     { label: "Luxury Collection", view: "luxury" },
-    { label: "Latest Listings", view: "buy" },
+    { label: "Latest Listings", url: "/sale" },
   ]);
   const col2 = parseCol("footer.col2", "Communities", [
     { label: "Palm Jumeirah", view: "communities" },
@@ -176,9 +176,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {col1.links.map((l, i) => (
                 <li key={i}>
-                  <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
-                    {l.label}
-                  </button>
+                  {l.url ? (
+                    <a href={l.url} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

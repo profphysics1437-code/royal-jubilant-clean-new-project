@@ -41,7 +41,7 @@ export function FeaturedProperties() {
 
         <div className="flex justify-center mt-12">
           <Button
-            onClick={() => setActiveView("buy")}
+            onClick={() => window.location.href = "/sale"}
             size="lg"
             variant="outline"
             className="rounded-full border-[#C9A961] text-[#0A1F44] hover:bg-[#C9A961]/10 px-8"

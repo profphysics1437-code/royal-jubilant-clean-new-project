@@ -6,13 +6,11 @@ export const dynamic = "force-dynamic";
 
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { Navbar } from "@/components/site/Navbar";
-import { Footer } from "@/components/site/Footer";
+import { PublicLayout } from "@/components/site/PublicLayout";
 import { Hero } from "@/components/site/Hero";
 import { ExploreProperty } from "@/components/site/sections/ExploreProperty";
-import { FloatingActions } from "@/components/site/FloatingActions";
-import { PopupManager } from "@/components/site/PopupManager";
 import {
   LatestProperties,
 } from "@/components/site/sections/FeaturedProperties";
@@ -20,15 +18,6 @@ import { Agents } from "@/components/site/sections/Agents";
 import { Testimonials } from "@/components/site/sections/Stats";
 import { VideoSection } from "@/components/site/sections/Blog";
 import { Newsletter } from "@/components/site/sections/OffPlan";
-
-// Modals
-import { PropertyDetailModal } from "@/components/site/modals/PropertyDetailModal";
-import { AgentModal } from "@/components/site/modals/AgentModal";
-import { CommunityModal } from "@/components/site/modals/CommunityModal";
-import { DeveloperModal } from "@/components/site/modals/DeveloperModal";
-import { MortgageModal } from "@/components/site/modals/MortgageModal";
-import { ValuationModal } from "@/components/site/modals/ValuationModal";
-import { DashboardModal } from "@/components/site/modals/DashboardModal";
 
 // Views
 import { PropertyListView } from "@/components/site/views/PropertyListView";
@@ -48,96 +37,89 @@ import {
 import { RentalYieldCalculator, BuyVsRentCalculator } from "@/components/site/views/CalculatorViews";
 import { StoryView } from "@/components/site/views/StoryView";
 import { AIPoweredView } from "@/components/site/views/AIPoweredView";
-import AIChatWidget from "@/components/ai/AIChatWidget";
+
+// Hash routes that have been migrated to clean Next.js routes.
+// When these hashes are detected, redirect to the clean URL.
+const HASH_REDIRECTS: Record<string, string> = {
+  rent: "/rent",
+  buy: "/sale",
+};
 
 export default function Home() {
   const { activeView, setActiveView } = useStore();
+  const router = useRouter();
 
-  // Handle browser back/forward buttons
+  // Handle browser back/forward buttons + hash redirect compatibility
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
+    const handleHash = () => {
       const hash = window.location.hash.replace("#/", "");
+
+      // Redirect migrated hash routes to clean URLs
+      if (hash && HASH_REDIRECTS[hash]) {
+        router.replace(HASH_REDIRECTS[hash]);
+        return;
+      }
+
+      // For non-migrated hashes, keep the existing Zustand view system
       const view = hash || "home";
-      // Only update state, don't push history again
       useStore.setState({ activeView: view });
       window.scrollTo({ top: 0, behavior: "auto" });
     };
+
+    // Handle popstate (browser back/forward)
+    const handlePopState = () => handleHash();
     window.addEventListener("popstate", handlePopState);
 
-    // On initial load, check if there's a hash and set the view
-    const initialHash = window.location.hash.replace("#/", "");
-    if (initialHash) {
-      useStore.setState({ activeView: initialHash });
-    }
+    // On initial load, check hash
+    handleHash();
 
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white overflow-x-hidden">
-      <Navbar />
+    <PublicLayout>
+      {activeView === "home" && (
+        <>
+          <Hero />
+          <ExploreProperty />
+          <LatestProperties />
+          <VideoSection />
+          <Agents />
+          <Testimonials />
+          <Newsletter />
+        </>
+      )}
 
-      <main className="flex-1 min-w-0">
-        {activeView === "home" && (
-          <>
-            <Hero />
-            <ExploreProperty />
-            <LatestProperties />
-            <VideoSection />
-            <Agents />
-            <Testimonials />
-            <Newsletter />
-          </>
-        )}
-
-        {activeView === "buy" && <PropertyListView filter="sale" />}
-        {activeView === "rent" && <PropertyListView filter="rent" />}
-        {activeView === "rent-rooms" && <PropertyListView filter="rent-rooms" />}
-        {activeView === "rent-holiday" && <PropertyListView filter="rent-holiday" />}
-        {activeView === "rent-monthly" && <PropertyListView filter="rent-monthly" />}
-        {activeView === "rent-daily" && <PropertyListView filter="rent-daily" />}
-        {activeView === "commercial" && <PropertyListView filter="commercial" />}
-        {activeView === "commercial-rent" && <PropertyListView filter="commercial-rent" />}
-        {activeView === "commercial-sale" && <PropertyListView filter="commercial-sale" />}
-        {activeView === "off-plan" && <PropertyListView filter="off-plan" />}
-        {activeView === "about-offplan" && <AboutOffPlanView />}
-        {activeView === "luxury" && <PropertyListView filter="luxury" />}
-        {activeView === "search-results" && <PropertyListView filter="all" />}
-        {activeView === "communities" && <CommunitiesView />}
-        {activeView === "agents" && <AgentsView />}
-        {activeView === "developers" && <DevelopersView />}
-        {activeView === "blog" && <BlogView />}
-        {activeView === "about" && <AboutView />}
-        {activeView === "contact" && <ContactView />}
-        {activeView === "faqs" && <FAQsView />}
-        {activeView === "calc-yield" && <RentalYieldCalculator />}
-        {activeView === "calc-buyrent" && <BuyVsRentCalculator />}
-        {activeView === "careers" && <CareersView />}
-        {activeView === "saved" && <SavedView />}
-        {activeView === "advice" && <AdviceView />}
-        {activeView === "story" && <StoryView />}
-        {activeView === "ai-powered" && <AIPoweredView />}
-      </main>
-
-      <Footer />
-
-      {/* Floating actions */}
-      <FloatingActions />
-
-      {/* Popup Manager — CMS-controlled popups */}
-      <PopupManager />
-
-      {/* Modals */}
-      <PropertyDetailModal />
-      <AgentModal />
-      <CommunityModal />
-      <DeveloperModal />
-      <MortgageModal />
-      <ValuationModal />
-      <DashboardModal />
-
-      {/* RJ AI Concierge Widget */}
-      <AIChatWidget />
-    </div>
+      {/* Rent/Sale are now at /rent and /sale (clean URLs).
+          These hash-based views are kept as fallback for backward compat
+          but will redirect to clean URLs via the hash redirect above. */}
+      {activeView === "buy" && <PropertyListView filter="sale" />}
+      {activeView === "rent" && <PropertyListView filter="rent" />}
+      {activeView === "rent-rooms" && <PropertyListView filter="rent-rooms" />}
+      {activeView === "rent-holiday" && <PropertyListView filter="rent-holiday" />}
+      {activeView === "rent-monthly" && <PropertyListView filter="rent-monthly" />}
+      {activeView === "rent-daily" && <PropertyListView filter="rent-daily" />}
+      {activeView === "commercial" && <PropertyListView filter="commercial" />}
+      {activeView === "commercial-rent" && <PropertyListView filter="commercial-rent" />}
+      {activeView === "commercial-sale" && <PropertyListView filter="commercial-sale" />}
+      {activeView === "off-plan" && <PropertyListView filter="off-plan" />}
+      {activeView === "about-offplan" && <AboutOffPlanView />}
+      {activeView === "luxury" && <PropertyListView filter="luxury" />}
+      {activeView === "search-results" && <PropertyListView filter="all" />}
+      {activeView === "communities" && <CommunitiesView />}
+      {activeView === "agents" && <AgentsView />}
+      {activeView === "developers" && <DevelopersView />}
+      {activeView === "blog" && <BlogView />}
+      {activeView === "about" && <AboutView />}
+      {activeView === "contact" && <ContactView />}
+      {activeView === "faqs" && <FAQsView />}
+      {activeView === "calc-yield" && <RentalYieldCalculator />}
+      {activeView === "calc-buyrent" && <BuyVsRentCalculator />}
+      {activeView === "careers" && <CareersView />}
+      {activeView === "saved" && <SavedView />}
+      {activeView === "advice" && <AdviceView />}
+      {activeView === "story" && <StoryView />}
+      {activeView === "ai-powered" && <AIPoweredView />}
+    </PublicLayout>
   );
 }

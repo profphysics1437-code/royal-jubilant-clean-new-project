@@ -202,6 +202,15 @@ export function Navbar() {
       }
       return;
     }
+    // Migrated routes — redirect to clean URLs instead of hash-based views
+    if (item.view === "rent") {
+      window.location.href = "/rent";
+      return;
+    }
+    if (item.view === "buy") {
+      window.location.href = "/sale";
+      return;
+    }
     if (item.view === "community" && item.id) {
       openCommunity(item.id);
     } else if (item.view === "developer" && item.id) {

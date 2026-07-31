@@ -44,8 +44,8 @@ export function Hero() {
   }, [slides.length, slideInterval]);
 
   const handleSearch = () => {
-    if (purpose === "rent") setActiveView("rent");
-    else setActiveView("buy");
+    if (purpose === "rent") window.location.href = "/rent";
+    else window.location.href = "/sale";
   };
 
   const communityOptions = [
@@ -129,7 +129,7 @@ export function Hero() {
               {/* Below the bar: RESIDENTIAL (gold) | COMMERCIAL (white) | OFF PLAN (white) | ADVANCED SEARCH (link) */}
               <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => setActiveView("buy")} className="px-5 py-2 bg-[#C9A961] text-white text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-[#A68A3F] transition-colors">Residential</button>
+                  <button onClick={() => window.location.href = "/sale"} className="px-5 py-2 bg-[#C9A961] text-white text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-[#A68A3F] transition-colors">Residential</button>
                   <button onClick={() => setActiveView("commercial")} className="px-5 py-2 bg-white text-[#0A1F44] text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-gray-100 transition-colors">Commercial</button>
                   <button onClick={() => setActiveView("off-plan")} className="px-5 py-2 bg-white text-[#0A1F44] text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-gray-100 transition-colors">Off Plan</button>
                 </div>
