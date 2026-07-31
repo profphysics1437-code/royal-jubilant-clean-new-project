@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -134,11 +135,16 @@ export function Navbar() {
   const phone = get("company.phone", "+971 4 327 8401");
   const email = get("company.email", "info@royaljubilant.ae");
   const whatsapp = get("company.whatsapp", "971524942329");
+  const pathname = usePathname();
+  // isHomePage = true only on the homepage route "/".
+  // Used to control transparent-vs-sticky header behavior.
+  // Previously used activeView from Zustand, but that doesn't update on
+  // clean Next.js routes (e.g. /rent, /about) — causing header overlap.
+  const isHomePage = pathname === "/";
   const {
     mobileMenuOpen,
     setMobileMenuOpen,
     setActiveView,
-    activeView,
     openCommunity,
     openDeveloper,
     setValuationOpen,
@@ -202,15 +208,41 @@ export function Navbar() {
       }
       return;
     }
-    // Migrated routes — redirect to clean URLs instead of hash-based views
-    if (item.view === "rent") {
-      window.location.href = "/rent";
+    // Map view names to clean URLs — all public pages now use clean routes
+    const VIEW_TO_URL: Record<string, string> = {
+      rent: "/rent",
+      buy: "/sale",
+      sale: "/sale",
+      "rent-rooms": "/rent-rooms",
+      "rent-holiday": "/rent-holiday",
+      "rent-monthly": "/rent-monthly",
+      "rent-daily": "/rent-daily",
+      commercial: "/commercial",
+      "commercial-rent": "/commercial-rent",
+      "commercial-sale": "/commercial-sale",
+      "off-plan": "/off-plan",
+      "about-offplan": "/about-offplan",
+      luxury: "/luxury",
+      communities: "/communities",
+      agents: "/agents",
+      developers: "/developers",
+      blog: "/blog",
+      about: "/about",
+      contact: "/contact",
+      faqs: "/faqs",
+      "calc-yield": "/calc-yield",
+      "calc-buyrent": "/calc-buyrent",
+      careers: "/careers",
+      saved: "/saved",
+      advice: "/advice",
+      story: "/story",
+      "ai-powered": "/ai-powered",
+    };
+    if (item.view && VIEW_TO_URL[item.view]) {
+      window.location.href = VIEW_TO_URL[item.view];
       return;
     }
-    if (item.view === "buy") {
-      window.location.href = "/sale";
-      return;
-    }
+    // Non-navigational views (modals, community/developer popups, testimonials scroll)
     if (item.view === "community" && item.id) {
       openCommunity(item.id);
     } else if (item.view === "developer" && item.id) {
@@ -220,12 +252,14 @@ export function Navbar() {
     } else if (item.view === "mortgage") {
       setMortgageOpen(true);
     } else if (item.view === "testimonials") {
-      setActiveView("home");
-      setTimeout(() => {
-        document.getElementById("testimonials")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 300);
+      window.location.href = "/#testimonials";
     } else if (item.view) {
-      setActiveView(item.view);
+      // Fallback: try clean URL, then hash
+      if (VIEW_TO_URL[item.view]) {
+        window.location.href = VIEW_TO_URL[item.view];
+      } else {
+        setActiveView(item.view);
+      }
     }
   };
 
@@ -234,7 +268,7 @@ export function Navbar() {
       {/* ─── Main nav — transparent over video on homepage only, navy on all other pages ─── */}
       <header
         className={`transition-all duration-500 z-50 ${
-          scrolled || activeView !== "home"
+          scrolled || !isHomePage
             ? "sticky top-0 bg-[#0A1F44] shadow-luxury border-b border-[#C9A961]/20"
             : "absolute top-0 left-0 right-0 bg-[#0A1F44]/80 backdrop-blur-sm md:bg-transparent border-b-0"
         }`}
@@ -242,11 +276,11 @@ export function Navbar() {
       >
         <div className="container mx-auto px-4 lg:px-8">
           <div className={`flex items-center justify-between transition-all duration-500 ${
-            scrolled || activeView !== "home" ? "h-16 lg:h-20" : "h-16 lg:h-24"
+            scrolled || !isHomePage ? "h-16 lg:h-20" : "h-16 lg:h-24"
           }`}>
             {/* ─── Branding block — logo + company name with luxury hover animation ─── */}
             <button
-              onClick={() => setActiveView("home")}
+              onClick={() => window.location.href = "/"}
               className="luxury-logo flex items-center gap-2 lg:gap-3 flex-shrink-0 min-w-0"
               aria-label="Royal Jubilant Real Estate LLC — Home"
             >

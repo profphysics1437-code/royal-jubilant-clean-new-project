@@ -49,34 +49,34 @@ export function Footer() {
   const col1 = parseCol("footer.col1", "Buy & Rent", [
     { label: "Properties for Rent", url: "/rent" },
     { label: "Properties for Sale", url: "/sale" },
-    { label: "Commercial Real Estate", view: "commercial" },
-    { label: "Off-Plan Projects", view: "off-plan" },
-    { label: "Luxury Collection", view: "luxury" },
+    { label: "Commercial Real Estate", url: "/commercial" },
+    { label: "Off-Plan Projects", url: "/off-plan" },
+    { label: "Luxury Collection", url: "/luxury" },
     { label: "Latest Listings", url: "/sale" },
   ]);
   const col2 = parseCol("footer.col2", "Communities", [
-    { label: "Palm Jumeirah", view: "communities" },
-    { label: "Downtown Dubai", view: "communities" },
-    { label: "Dubai Marina", view: "communities" },
-    { label: "Creek Harbour", view: "communities" },
-    { label: "Dubai Hills", view: "communities" },
-    { label: "Business Bay", view: "communities" },
+    { label: "Palm Jumeirah", url: "/communities" },
+    { label: "Downtown Dubai", url: "/communities" },
+    { label: "Dubai Marina", url: "/communities" },
+    { label: "Creek Harbour", url: "/communities" },
+    { label: "Dubai Hills", url: "/communities" },
+    { label: "Business Bay", url: "/communities" },
   ]);
   const col3 = parseCol("footer.col3", "Services", [
-    { label: "Property Valuation", view: "contact" },
-    { label: "Mortgage Advisory", view: "contact" },
-    { label: "Meet the Agents", view: "agents" },
-    { label: "Market Insights", view: "blog" },
-    { label: "Careers", view: "careers" },
-    { label: "Rental Yield Calculator", view: "calc-yield" },
+    { label: "Property Valuation", url: "/contact" },
+    { label: "Mortgage Advisory", url: "/contact" },
+    { label: "Meet the Agents", url: "/agents" },
+    { label: "Market Insights", url: "/blog" },
+    { label: "Careers", url: "/careers" },
+    { label: "Rental Yield Calculator", url: "/calc-yield" },
   ]);
   const col4 = parseCol("footer.col4", "Company", [
-    { label: "About Us", view: "about" },
-    { label: "Our Story", view: "about" },
-    { label: "Our Advice", view: "advice" },
-    { label: "Client Reviews", view: "testimonials" },
-    { label: "FAQs", view: "faqs" },
-    { label: "Contact Us", view: "contact" },
+    { label: "About Us", url: "/about" },
+    { label: "Our Story", url: "/story" },
+    { label: "Our Advice", url: "/advice" },
+    { label: "Client Reviews", url: "/#testimonials" },
+    { label: "FAQs", url: "/faqs" },
+    { label: "Contact Us", url: "/contact" },
   ]);
   const instagram = get("social.instagram", "https://www.instagram.com/royal_jubilant?igsh=ZGFnd3IzejljM3Fs");
   const linkedin = get("social.linkedin", "#");
@@ -196,9 +196,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {col2.links.map((l, i) => (
                 <li key={i}>
-                  <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
-                    {l.label}
-                  </button>
+                  {l.url ? (
+                    <a href={l.url} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -210,9 +216,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {col3.links.map((l, i) => (
                 <li key={i}>
-                  <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
-                    {l.label}
-                  </button>
+                  {l.url ? (
+                    <a href={l.url} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -224,9 +236,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {col4.links.map((l, i) => (
                 <li key={i}>
-                  <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
-                    {l.label}
-                  </button>
+                  {l.url ? (
+                    <a href={l.url} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <button onClick={() => setActiveView(l.view)} className="text-white/65 hover:text-[#C9A961] transition-colors text-left">
+                      {l.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

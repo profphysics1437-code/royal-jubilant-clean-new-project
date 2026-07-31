@@ -38,11 +38,37 @@ import { RentalYieldCalculator, BuyVsRentCalculator } from "@/components/site/vi
 import { StoryView } from "@/components/site/views/StoryView";
 import { AIPoweredView } from "@/components/site/views/AIPoweredView";
 
-// Hash routes that have been migrated to clean Next.js routes.
-// When these hashes are detected, redirect to the clean URL.
+// All public hash routes have been migrated to clean Next.js routes.
+// When a legacy hash is detected, redirect to the clean URL.
 const HASH_REDIRECTS: Record<string, string> = {
   rent: "/rent",
   buy: "/sale",
+  sale: "/sale",
+  "rent-rooms": "/rent-rooms",
+  "rent-holiday": "/rent-holiday",
+  "rent-monthly": "/rent-monthly",
+  "rent-daily": "/rent-daily",
+  commercial: "/commercial",
+  "commercial-rent": "/commercial-rent",
+  "commercial-sale": "/commercial-sale",
+  "off-plan": "/off-plan",
+  "about-offplan": "/about-offplan",
+  luxury: "/luxury",
+  "search-results": "/rent",
+  communities: "/communities",
+  agents: "/agents",
+  developers: "/developers",
+  blog: "/blog",
+  about: "/about",
+  contact: "/contact",
+  faqs: "/faqs",
+  "calc-yield": "/calc-yield",
+  "calc-buyrent": "/calc-buyrent",
+  careers: "/careers",
+  saved: "/saved",
+  advice: "/advice",
+  story: "/story",
+  "ai-powered": "/ai-powered",
 };
 
 export default function Home() {
